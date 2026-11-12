@@ -147,6 +147,64 @@ A value made on the spot that a `switch` or `is` tests lives until the end of it
 
 An owned payload leaves a `Result` (README section 1.7) only through a borrow today: the `switch` binding reads `ok.Value` but cannot take it. The `?` operator (batch B4d) will move the payload out of a `Result` the function owns.
 
+## Arrays and lists made from their elements
+
+`new T[] { a, b }`, `new[] { a, b }`, `{ a, b }` and the collection expression `[a, b]` take each element as `Add` does: an owned element (a class object, a list, an array) moves in, and a string or a `Shared<T>` handle is counted. The elements are evaluated left to right, and only then is the array or list made, so an element that stops the program leaves nothing half built. A collection that nothing takes (a temporary argument) is dropped at the end of its statement. An element of another collection still cannot be moved out to build a new one:
+
+```nz error="cannot move out of a collection element"
+package main;
+
+class Token {
+    int Kind;
+}
+
+void Main(string[] args) {
+    Token[] a = [new Token(), new Token()];
+    Token[] b = [a[0]];
+}
+```
+
+Copy the values you need into a new object, or build the new collection from new objects. Strings and handles have no such limit: `string[] t = [s[0], s[1]];` counts each string.
+
+## Spans borrow for one call
+
+Passing an array as a `Span<T>` lends it to the call, the way `ref` and `in` lend a variable: a `Span<T>` parameter borrows the array for writing (no other argument of the call may use it), and an `in Span<T>` parameter borrows it for reading (other `in` arguments may share it). The array is never moved, and it stays with its owner after the call. A span made from a temporary (a call result, a collection expression) borrows that temporary, which is freed at the end of the statement.
+
+```nz error="overlapping borrow"
+package main;
+
+void Copy(Span<int> to, in Span<int> from) { }
+
+void Main(string[] args) {
+    int[] a = [1, 2, 3];
+    Copy(a, a);
+}
+```
+
+Inside the function, a span parameter follows the rules of the array it views: an element of owned type cannot be moved out (assigning an element drops the old one), a `foreach` over the span freezes it, and an `in Span<T>` is read-only. A span is never stored, so it cannot outlive the call. A span over storage inside a `Shared<T>` or `Arc<T>` object is not supported yet: the run-time lend checks of shared objects work per call argument, not per span.
+
+`params` arguments move into the array made for them, as into a by-value parameter: a variable passed as one of them cannot be used afterwards. For a `params Span<T>` that array is a temporary, freed with its elements at the end of the statement; a `params T[]` array is the callee's.
+
+```nz error="use of moved value `c`"
+package main;
+
+class C {
+    int N;
+}
+
+int Count(params Span<C> cs) {
+    return cs.Length;
+}
+
+void Main(string[] args) {
+    var c = new C();
+    int n = Count(c, new C());
+    int k = c.N;
+}
+```
+
+A spread element `..e` in a collection expression only reads `e`: its elements are copied (strings and handles are counted), so `e` keeps them. An `e` whose elements are owned cannot be spread. `a?[i]` reads an element and moves nothing; an owned element cannot be moved out of it, as with `a[i]`.
+
 ## Borrowing: `in` and `ref`
 
 A parameter can borrow instead of owning. `in` lends the value for reading, `ref` lends it for reading and writing. The caller keeps ownership, and the borrow lasts **only for that one call**: there are no local borrows, so a borrow cannot be stored in a variable, a field or a return value.

@@ -32,7 +32,7 @@ The compiler tracks, syntactically, the local variables and parameters (except `
 | `while (x != null)` | the loop body |
 | `x ??= v;` as a single statement inside a block | the rest of that block, for local variables only |
 
-`?.` and `??` are always allowed on an optional value.
+`?.`, `?[` and `??` are always allowed on an optional value.
 
 `?.` needs a value on its left. A type name is not a value, so `Counter?.Hit()` is an error, as in C# (write `Counter.Hit()`):
 
@@ -53,6 +53,25 @@ string? s = null;
 bool ok = s != null && s.Length > 0;
 bool empty = s == null || s.Length == 0;
 var n = s != null ? s.Length : 0;
+```
+
+## Null-conditional indexing `?[`
+
+`a?[i]` (C#) indexes an array, a `List<T>`, a `string` or a span when `a` is not null, and is `null` otherwise. The collection is evaluated once; the index is evaluated only when the collection is not null. The result is the element type made optional (unchanged when the element is already optional), so it is checked like any other optional:
+
+```nz fragment output="True 0\n"
+string? s = null;
+char? c = s?[0];
+List<string>? names = null;
+string shown = names?[0] ?? "none";
+Console.WriteLine($"{c == null} {shown.Length - 4}");
+```
+
+`a?[i]` is a value, not a variable: assigning to it, `++` and passing it to a `ref` parameter are errors (as in C# before C# 14), and so is a range (`a?[1..]`). An index that is out of range stops the program, as `a[i]` does.
+
+```nz fragment error="cannot assign to a null-conditional element"
+List<int>? l = null;
+l?[0] = 1;
 ```
 
 ## When a check stops applying

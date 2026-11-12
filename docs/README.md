@@ -807,7 +807,8 @@ The order of precedence, from lowest:
 | | `<<` `>>` `>>>` | left |
 | | `+` `-` | left |
 | | `*` `/` `%` | left |
-| | `!` `+` `-` `~` `++` `--` `(T)x` (prefix) | right |
+| | `..` (range) | none |
+| | `!` `+` `-` `~` `^` `++` `--` `(T)x` (prefix) | right |
 | highest | `.` `?.` `()` `[]` `++` `--` (postfix) | left |
 <!-- /GEN -->
 
@@ -2983,6 +2984,159 @@ The labels take the patterns of the `switch` expression (`case Ok<int> ok:`), an
 
 **Temporaries.** A value made on the spot that a `switch` or an `is` tests lives until the end of the statement that holds it (owner decision E5), so a binding into it is valid for the whole statement; for an `if`, that is both branches.
 
+## 2.11 Arrays and collection expressions
+
+An array `T[]` has a fixed length, lives on the heap and owns its elements. It is made empty with `new T[n]` (every element is the default value of `T`, so `T` needs one: `new string?[3]`, not `new string[3]`), or from its elements, as in C#:
+
+```nz output="3 2 4 3\nimport package\n9 10 2\n"
+package main;
+import std.io.Console;
+import std.collections.List;
+
+void Main(string[] args) {
+    int[] a = new int[] { 1, 2, 3 };
+    long[] b = new[] { 1, 2L };          // the best common type of the elements
+    int[] c = { 4, 5 };                  // only as the initializer of a declared array
+    int[] d = [6, 7, 8];                 // a collection expression
+    Console.WriteLine($"{a[2]} {b[1]} {c[0]} {d.Length}");
+
+    string[] words = ["import", "package"];
+    Console.WriteLine($"{words[0]} {words[1]}");
+
+    List<int> l = [9, 10];               // a collection expression makes a list too
+    Console.WriteLine($"{l[0]} {l[1]} {l.Count}");
+}
+```
+
+`new T[n] { ... }` takes a constant `n` equal to the number of elements. `new[] { ... }` needs elements with a best common type (`new[] { 1, "a" }` is an error). `{ ... }` alone initializes only a declared array variable or field (`var a = { 1 };` is an error, as in C#).
+
+A collection expression `[a, b]` takes its type from where it stands: a declared variable or field, an assignment, a `return`, an argument, a `?:` arm (from the target, or else from the other arm: `var q = c ? [2] : b;`), an element of a typed tuple (`(int[], int) t = ([1, 2], 3);`), or the value of `new Shared<int[]>(...)`. Its target is an array or a `List<T>`. As in C# 12, it has no type of its own, so `var xs = [1, 2];` is an error:
+
+```nz fragment error="there is no target type for the collection expression"
+var xs = [1, 2];
+```
+
+**Ownership.** The elements are evaluated left to right, then the array or list is made and each element is moved into it (a class object, a list, an array) or counted (a string, a `Shared<T>` handle), as when it is passed to `Add`. A variable moved into a collection cannot be used afterwards, and an element of another collection cannot be moved out to make a new one:
+
+```nz fragment error="use of moved value `n`"
+var n = new List<int>();
+List<int>[] all = [n];
+int k = n.Count;
+```
+
+**Spread.** As in C# 12, an element written `..e` copies every element of `e` (an array, a `List<T>` or a span) into the new collection, in order. The source is only read: it keeps its own elements.
+
+```nz output="1 2 3 4 5\n2\n"
+package main;
+import std.io.Console;
+import std.collections.List;
+
+void Main(string[] args) {
+    int[] a = [1, 2];
+    List<int> l = [3];
+    int[] all = [..a, ..l, 4, 5];
+    Console.WriteLine($"{all[0]} {all[1]} {all[2]} {all[3]} {all[4]}");
+    Console.WriteLine($"{a.Length}");
+}
+```
+
+Numbers, `bool`, `char` and enums are copied; a string or a `Shared<T>` handle gets a count of its own, as when it is passed by value. Elements that are owned (class objects, arrays, lists) cannot be spread, because each would get a second owner:
+
+```nz fragment error="its elements are owned and would get a second owner"
+List<int[]> rows = [[1], [2]];
+List<int[]> copy = [..rows];
+```
+
+### Indexes from the end and ranges
+
+As in C#, `^n` is an `Index` counted from the end (`^1` is the last element) and `a..b` is a `Range` from `a` up to, not including, `b`; either bound may be left out (`1..`, `..^1`, `..`). `Index` and `Range` are values like numbers: they can be stored, passed and returned, and an `int` converts to an `Index`. An array, a `List<T>` and a `string` take an `Index`; a `string` also takes a `Range` and gives a new string, as `Substring` does:
+
+```nz output="4 2 o\nhel ell lo\n1..^1\n"
+package main;
+import std.io.Console;
+
+void Main(string[] args) {
+    int[] a = [1, 2, 3, 4];
+    string s = "hello";
+    Index last = ^1;
+    Console.WriteLine($"{a[last]} {a[^3]} {s[^1]}");
+    Range r = 1..^1;
+    Console.WriteLine($"{s[..3]} {s[1..4]} {s[^2..]}");
+    Console.WriteLine($"{r}");
+}
+```
+
+`^0` is one past the end, so `a[^0]` stops the program with `index out of range`; a negative value after `^` stops with .NET's `ArgumentOutOfRangeException`, and so does a range outside the string. A range binds tighter than `+` and `-` (as in C#): `1..n-1` is `(1..n) - 1`, an error; write `1..(n - 1)`. A `List<T>` cannot be sliced (C# has no `List<T>` slice), and slicing an array is not supported yet: whether it gives a new array (C#) or a borrowed view is an open question for the owner.
+
+### Spans
+
+A `Span<T>` is a view of elements another value owns: a pointer and a length, as in C#. It is a parameter type: `Span<T>` lets the function read and write the elements, `in Span<T>` only read them. An array converts to a span of its elements, and so does a collection expression (`Sum([1, 2])`); a span parameter can be indexed (also with `^`), measured with `.Length`, iterated with `foreach`, sliced with a range (giving a span over part of the same storage) and passed on to another span parameter:
+
+```nz output="10 5 7\n1 0 0 4\n"
+package main;
+import std.io.Console;
+
+int Sum(in Span<int> s) {
+    int t = 0;
+    foreach (int x in s) {
+        t += x;
+    }
+    return t;
+}
+
+int Inner(in Span<int> s) {
+    return Sum(s[1..^1]);
+}
+
+void Clear(Span<int> s) {
+    for (int i = 0; i < s.Length; i++) {
+        s[i] = 0;
+    }
+}
+
+void ClearMiddle(Span<int> s) {
+    Clear(s[1..^1]);
+}
+
+void Main(string[] args) {
+    int[] a = [1, 2, 3, 4];
+    Console.WriteLine($"{Sum(a)} {Inner(a)} {Sum([3, 4])}");
+    ClearMiddle(a);
+    Console.WriteLine($"{a[0]} {a[1]} {a[2]} {a[3]}");
+}
+```
+
+A span lives only as long as the call it is passed to (owner decision D-B2d-1 (A)): it cannot be stored in a local variable, a field, a static, an array or a list, returned, or used as a type argument; this is stricter than C#, which allows span locals. Real C# lets a function write the elements of an `in Span<T>`; in NZ `in` is read-only, as for every `in` parameter. `ReadOnlySpan<T>` is not supported yet. How a span borrows its source is in [Ownership](+/Ownership.md#spans-borrow-for-one-call).
+
+### `params`
+
+The last parameter can be `params Span<T>` or, as in C#, `params T[]`. A call then passes either one array, span or collection expression for it, or any number of values of type `T`, which are put in a new array:
+
+```nz output="0 6 9 2\n2 0\n"
+package main;
+import std.io.Console;
+
+int Sum(params Span<int> xs) {
+    int t = 0;
+    foreach (int x in xs) {
+        t += x;
+    }
+    return t;
+}
+
+int Count(params string[] words) {
+    return words.Length;
+}
+
+void Main(string[] args) {
+    int[] a = [1, 1];
+    Console.WriteLine($"{Sum()} {Sum(1, 2, 3)} {Sum([4, 5])} {Sum(a)}");
+    Console.WriteLine($"{Count("x", "y")} {Count()}");
+}
+```
+
+The values are moved into the new array (or counted, for strings and handles). For a `params Span<T>` the array is a temporary, freed with its elements at the end of the statement; a `params T[]` array is given to the function, as any array passed by value. `params` on any other parameter, or on a type that is not a span or an array, is an error.
+
 # 3. Null Safety
 
 `null` is only valid for optional types `T?`.
@@ -3025,12 +3179,22 @@ a += 1;
 Console.WriteLine($"{a} [{a + none}] {a > 5} {none < 5} [{unknown & true}] {unknown & false}");
 ```
 
-Two spelling rules involve `?`. In `x is int?` the `?` belongs to the type only when the next token cannot start an expression, so `x is int ? a : b` is a conditional, not a test against `int?`. And `?[` (no space) is one token: `string?[] names` and `new string?[3]` are optional arrays, but null-conditional indexing (`a?[0]`) is not supported yet and gives an error.
+Two spelling rules involve `?`. In `x is int?` the `?` belongs to the type only when the next token cannot start an expression, so `x is int ? a : b` is a conditional, not a test against `int?`. With a space, `x is int? [1] : b` is a conditional whose arm is the collection expression `[1]`. And `?[` (no space) is one token: in a type, `string?[] names` and `new string?[3]` are arrays of optional strings; after a value, `a?[0]` is null-conditional indexing (below), so `x is int?[0]` indexes the `bool` `x is int`, which is an error.
 
 ```nz fragment output="yes\n"
 int x = 1;
 string r = x is int ? "yes" : "no";
 Console.WriteLine(r);
+```
+
+`a?[i]` reads an element of an array, a `List<T>`, a `string` or a span that may be null, as in C#: it is `null` when `a` is, and then the index is not evaluated; otherwise it is the element, as an optional (`int?`, `char?`, `string?`). An array reached through `?.` works the same way (`box?.Items?[0]`).
+
+```nz fragment output="none\n2 3\n"
+List<int>? l = null;
+int? first = l?[0];
+Console.WriteLine(first == null ? "none" : "some");
+l = [2, 3];
+Console.WriteLine($"{l?[0]} {l?[^1]}");
 ```
 
 The full rules, including when a check stops being valid, are in [Null Safety](+/Null-Safety.md).
