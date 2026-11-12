@@ -404,6 +404,44 @@ A value made on the spot that a pattern variable tests (`if (Make() is Node n) {
 
 Dropping a container drops what it owns: a list frees its elements, an object frees its fields. A structure of any shape and depth is dropped with a bounded C stack: the generated drop code does not recurse, it defers what it reaches to a worklist in the runtime and works through it before the drop finishes, so a chain through a field of the class's own type, a list of children, a field of a struct, objects of alternating types or a tree deep on either side can be as long as memory allows (chains of 1,000,000 links of each shape are tested).
 
+### The order inside one drop
+
+Dropping a value frees the **object first, then its fields in declaration order**, each field completely (with everything it owns) before the next field. The order is the same for every shape:
+
+- a class object is freed, then its fields drop from the first declared to the last; a field holding another object drops that object the same way before the next field;
+- a struct, tuple or positional `record struct` is not freed itself (it lives in its variable, field or element); its fields drop in declaration order in its place;
+- a union drops the case it holds, in its place;
+- an optional drops its value when it has one;
+- a `List<T>`, `Dictionary<K, V>` or `HashSet<T>` is freed first, then its elements drop in order (a dictionary's entries in insertion order, the key before the value), then the storage that held them;
+- an array's elements drop in order, then its storage: the elements live in the array's own block, so it goes after the last one;
+- a `Shared<T>` or `Arc<T>` whose last strong handle goes releases its block first (the block is freed unless a `WeakReference<T>` to it is left), then drops the object it holds;
+- a string field is released in its place among the other fields.
+
+```nz
+package main;
+
+import std.io.Console;
+
+class Leaf {
+    int N;
+}
+
+class Node {
+    Leaf First = new Leaf();
+    Node? Next;
+    Leaf Last = new Leaf();
+}
+
+void Main(string[] args) {
+    var n = new Node();
+    n.Next = new Node();
+    Console.WriteLine("built");
+    // Freed in this order: n, n.First, n.Next, n.Next.First, n.Next.Last, n.Last.
+}
+```
+
+Nothing a program can do today observes the order inside one drop: there are no destructors yet, and `Diag.LiveObjects()` and the `NZ_ALLOC_REPORT=1` report are read between statements. The order is fixed now because it becomes the order in which destructors run once they exist. Real C# has no deterministic destructor order for managed objects (a finalizer runs when the garbage collector decides, `IDisposable.Dispose` when the program calls it), so this rule is NZ's own (owner decision, 2026-11-12); it is the parent-before-members order of Rust and C++. Each field's value is read before its object is freed, so no drop reads freed memory, and nothing is freed while a borrow of it lives (the borrow rules above). The order has a memory cost in long chains: the fields declared after a chain's link drop only once the rest of the chain has, so while the drop runs the runtime's worklist grows by one entry (32 bytes) per owning field declared after the link, per node (see README, "Dropping a deep structure needs only a bounded stack").
+
 ## Strings
 
 A `string` is an immutable value that is copied freely, as in C#: assigning it, passing it by value, returning it, and storing it in a field, an element or a tuple make a copy, and every copy stays usable. A struct or tuple whose only members that hold something are strings is copied freely too. Nothing about strings is ever refused by the borrow rules.
