@@ -1,0 +1,9 @@
+NZ
+Copyright 2026 Dhimas Arista
+
+This product includes software developed by Dhimas Arista (https://github.com/North-Zen/nz-lang).
+
+tools/gen-unicode/UnicodeData-subset.txt and the generated runtime/nz_unicode.h contain data
+from the Unicode Character Database (UnicodeData.txt, Unicode 15.0.0), Copyright (C) Unicode, Inc.,
+distributed under the Unicode License v3. The full license text is in
+tools/gen-unicode/LICENSE-UNICODE.
