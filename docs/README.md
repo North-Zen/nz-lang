@@ -2916,7 +2916,120 @@ Properties and constants in a union body are not supported yet. A union has no t
 
 ## 2.10 Patterns and the `switch` statement
 
-**Type patterns.** On a union, a `switch` arm or an `is` test names a case: `Cat c` binds the case to a new name, `Cat` alone only tests it, and `_` takes anything else. A binding borrows the case: it can be read and changed, not moved out (owner decision E4). A type that is not a case of the union is an error (`` `Fish` is not a case of `Pet` ``). The union itself is a type test of the value, as in C#: on a `Pet?`, `o is Pet p` tests for null and binds the union (`n.Left is Tree l` in a recursive union), and on a `Pet` it always matches. Type patterns work on unions; on other types they are not supported yet.
+**Type patterns.** On a union, a `switch` arm or an `is` test names a case: `Cat c` binds the case to a new name, `Cat` alone only tests it, and `_` takes anything else. A binding borrows the case: it can be read and changed, not moved out (owner decision E4). A type that is not a case of the union is an error (`` `Fish` is not a case of `Pet` ``). The union itself is a type test of the value, as in C#: on a `Pet?`, `o is Pet p` tests for null and binds the union (`n.Left is Tree l` in a recursive union), and on a `Pet` it always matches. On any other type, a type pattern is the tested type itself (`int i` on an `int?` tests for null); a type pattern between classes waits for inheritance.
+
+**Constant, relational and logical patterns** (C# 9). A constant (`0`, `'a'`, `"hi"`, `null`, a named constant or an enum member) matches an equal value; `< c`, `<= c`, `> c` and `>= c` compare numbers, `char`s and enum values with a constant; `not`, `and` and `or` combine patterns, in that order of precedence, and parentheses group them. `is` takes every pattern, and `x is not null` proves `x` is not null where it holds:
+
+```nz output="name digit space other\nTrue False 3 -1\n"
+package main;
+
+import std.io.Console;
+
+string Kind(char c) => c switch {
+    >= 'a' and <= 'z' or >= 'A' and <= 'Z' or '_' => "name",
+    >= '0' and <= '9' => "digit",
+    ' ' or '\t' or '\n' => "space",
+    _ => "other",
+};
+
+int Length(string? s) {
+    if (s is not null) {
+        return s.Length;
+    }
+    return -1;
+}
+
+void Main(string[] args) {
+    Console.WriteLine($"{Kind('x')} {Kind('7')} {Kind(' ')} {Kind('+')}");
+    char c = 'q';
+    int? n = 3;
+    Console.WriteLine($"{c is >= 'a' and <= 'z'} {n is null or > 5} {Length("abc")} {Length(null)}");
+}
+```
+
+A `switch` on an optional is allowed: `null` matches the missing value, and every other pattern except `var`, `_` and `not ...` needs a value. As in C#, a constant pattern on an `int?` tests the value, and an `int` constant matches a `double`.
+
+**Property, positional and `var` patterns** (C# 8). `{ X: 0, Y: > 1 }` matches a value whose fields match; `Point { X: 0 }` also tests the type (on a union, the case; on an optional, not null), and `{ }` matches any value that is not null. `(p, q)` matches a tuple element by element, and `Pair(p, q)` a positional `record struct` by its parameters (owner decision E9: tuples and positional records, no user `Deconstruct`). `var x` matches every value, `null` included, and binds it; a name after a property or positional pattern binds the matched value (`{ X: > 0 } p`). A variable under `or` or `not` is an error, as in C#.
+
+```nz output="origin y-axis 3 far\n1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz \nbig 5 bad\n"
+package main;
+
+import std.io.Console;
+
+class Point { public int X = 0; public int Y = 0; }
+
+record struct Pair(int A, int B);
+
+Point P(int x, int y) { Point p = new Point(); p.X = x; p.Y = y; return p; }
+
+string Where(in Point p) => p switch {
+    { X: 0, Y: 0 } => "origin",
+    { X: 0 } => "y-axis",
+    { X: > 5 } => "far",
+    { X: var x } => $"{x}",
+};
+
+string Fizz(int n) => (n % 3, n % 5) switch {
+    (0, 0) => "FizzBuzz",
+    (0, _) => "Fizz",
+    (_, 0) => "Buzz",
+    _ => $"{n}",
+};
+
+string Show(Result<int, string> r) => r switch {
+    Ok<int>(> 10) => "big",
+    Ok<int>(var v) => $"{v}",
+    Err<string>(var e) => e,
+};
+
+void Main(string[] args) {
+    Console.WriteLine($"{Where(P(0, 0))} {Where(P(0, 4))} {Where(P(3, 1))} {Where(P(9, 9))}");
+    for (int i = 1; i <= 15; i++) {
+        Console.Write($"{Fizz(i)} ");
+    }
+    Console.WriteLine();
+    Console.WriteLine($"{Show(new Ok<int>(40))} {Show(new Ok<int>(5))} {Show(new Err<string>("bad"))}");
+}
+```
+
+Property patterns read fields (owner decision D5: computed properties come with properties, B2c); the members of built-in types (`Count`, `Length`) and the objects behind `Shared` and `Arc` handles are not supported yet. C# 10's extended form `{ A.X: 0 }` is not supported yet: write `{ A: { X: 0 } }`.
+
+**Guards** (C# 7). `when` after a pattern adds a condition, which can read the pattern's variables. It runs only when the pattern matched, once, in arm order; when it is false, matching goes on with the next arm. It works on `case` labels too. A guard cannot move, replace or change the value its `switch` tests, nor the list or object that holds it (the later arms still test it), even when only `_` follows; lend the value with `in` instead. The parts inside the tested value and the object behind a `Shared` handle are not held: a guard may change them, and the later arms then see the change, as in C#:
+
+```nz output="old young cat\nbig small other\n"
+package main;
+
+import std.io.Console;
+
+class Dog { public int Age = 0; }
+class Cat { }
+
+union Pet(Dog, Cat);
+
+string Kind(Pet p) => p switch {
+    Dog d when d.Age > 3 => "old",
+    Dog => "young",
+    Cat => "cat",
+};
+
+string Size(int k) {
+    switch (k) {
+        case var v when v > 3:
+            return "big";
+        case 1 or 2:
+            return "small";
+        default:
+            return "other";
+    }
+}
+
+void Main(string[] args) {
+    Dog old = new Dog();
+    old.Age = 7;
+    Console.WriteLine($"{Kind(old)} {Kind(new Dog())} {Kind(new Cat())}");
+    Console.WriteLine($"{Size(5)} {Size(2)} {Size(0)}");
+}
+```
 
 **Exhaustiveness.** As in C#, a `switch` expression that does not cover every value is a warning (C#'s CS8509), and at run time a value that no arm matches stops the program with `nz: SwitchExpressionException: Non-exhaustive switch expression failed to match its input.` (owner decision E3):
 
@@ -2953,7 +3066,26 @@ void Main(string[] args) {
 }
 ```
 
-An arm that an earlier arm already covers is an error, as in C#: after `Cat => 4, Dog => 4` on a `Pet`, `_ => 0` is ``pattern `_` is already handled by an earlier arm``.
+The check looks inside patterns: integer and `char` ranges, `null`, tuples, records, property patterns and union cases at any depth. When some value is left, the warning names one:
+
+```nz warning="for example `(false, false)` is not handled"
+package main;
+
+import std.io.Console;
+
+int Code(bool a, bool b) => (a, b) switch {
+    (true, _) => 1,
+    (false, true) => 2,
+};
+
+void Main(string[] args) {
+    Console.WriteLine(Code(true, false));
+}
+```
+
+A guarded arm covers nothing. A `string` or floating-point constant takes nothing away either, so such a `switch` needs `_` even where C# could prove more. The check stops after 100,000 steps of work (owner decision E10): a `switch` that ends with `_` or `var x` is then accepted, only the reachability of its earlier arms left unchecked; one that does not is an error that asks for `_`.
+
+An arm that an earlier arm already covers is an error, as in C#: after `Cat => 4, Dog => 4` on a `Pet`, `_ => 0` is ``pattern `_` is already handled by an earlier arm``, and after `< 10`, the arm `< 5` is too. As in C#, a `_` after `{ }` on a class is allowed (C# counts `null` there).
 
 **The `switch` statement** has C#'s form (owner decision E6): sections that start with one or more `case` labels or `default`, and end with `break`, `return`, `continue` or another way out. Control cannot fall from one section into the next; several labels can share one section:
 
@@ -2980,7 +3112,7 @@ void Main(string[] args) {
 }
 ```
 
-The labels take the patterns of the `switch` expression (`case Ok<int> ok:`), and the sections share one declaration space, as in C#. A statement that does not cover every value is no warning: nothing runs when no label matches. `when` guards, `goto case`, a pattern variable in a section with more than one label, and a variable declared in one section and used in another are not supported yet.
+The labels take the patterns of the `switch` expression (`case Ok<int> ok:`), and the sections share one declaration space, as in C#. A statement that does not cover every value is no warning: nothing runs when no label matches. `goto case`, a pattern variable in a section with more than one label, and a variable declared in one section and used in another are not supported yet.
 
 **Temporaries.** A value made on the spot that a `switch` or an `is` tests lives until the end of the statement that holds it (owner decision E5), so a binding into it is valid for the whole statement; for an `if`, that is both branches.
 
@@ -3833,5 +3965,5 @@ void Main(string[] args) {
 - Members on enums: `E.A.ToString()` is an error. Print an enum with `{e}` in an interpolation.
 - `sizeof(nint)` and `sizeof(nuint)`: the size depends on the target, so a constant cannot hold it. `sizeof` of the other eight integer types and of an enum works.
 - A cast before a `switch`: `(int)b switch { ... }` is read as `(int)(b switch { ... })`, which is not as in C#: C# casts first, as `((int)b) switch { ... }`. Write those parentheses to cast first.
-- Unions as text and with `==`: `$"{p}"` on a union is refused (`not supported yet: a union as text`), and so is `p == q`; format or compare the case it holds after `is` or `switch`. Properties and constants in a union body, arrays and interfaces as cases, type patterns on a type that is not a union, and `switch` on a `U?` (with `case null`) are not supported yet. A union is not the payload of a handle: `Shared<Pet>` and `Arc<Pet>` are refused (`` `Shared<Pet>` is not supported; wrap the value in a class ``); put the union in a field of a class and share that class.
+- Unions as text and with `==`: `$"{p}"` on a union is refused (`not supported yet: a union as text`), and so is `p == q`; format or compare the case it holds after `is` or `switch`. Properties and constants in a union body, arrays and interfaces as cases, and type patterns between classes are not supported yet. Patterns: list patterns (`[a, .., z]`), C# 10's extended property patterns (`{ A.X: 0 }`), property patterns on built-in types and handles, a user `Deconstruct`, and a pattern variable used after the `if` that tests `is not` (C#'s wider scope) are not supported yet. A union is not the payload of a handle: `Shared<Pet>` and `Arc<Pet>` are refused (`` `Shared<Pet>` is not supported; wrap the value in a class ``); put the union in a field of a class and share that class.
 - `switch` patterns above the `long` range: on a `ulong` value, a literal pattern above `long.MaxValue` (`9223372036854775808`) is refused, and so is a suffixed literal pattern (`18446744073709551615UL`). A named constant works: `const ulong Big = 18446744073709551615UL;` and then `u switch { Big => ..., _ => ... }`.

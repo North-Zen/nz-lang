@@ -147,6 +147,18 @@ A value made on the spot that a `switch` or `is` tests lives until the end of it
 
 An owned payload leaves a `Result` (README section 1.7) only through a borrow today: the `switch` binding reads `ok.Value` but cannot take it. The `?` operator (batch B4d) will move the payload out of a `Result` the function owns.
 
+### Pattern variables at depth
+
+A variable inside a property or positional pattern (`{ A: var a }`, `(_, var c)`, `{ A: { X: var x } p }`) borrows the member it matched, as a case binding borrows its case. Replacing that member, or the value that holds it, ends the variable; changing a field inside the borrowed object does not, and the variable sees the change, as in C#. A class or a handle is borrowed, a `Copy` value is copied, a string gets a count of its own (it survives the replacement of its member, as in C#), and a struct that owns something is read where it is stored. Such a struct inside a list element is not supported yet. A `when` guard runs after the variables are set. It cannot move, replace or change the value its `switch` tests (the later arms still test it), and a write through a designation (`{ A: var a } q`, then `q.A = ...`) ends `a` like a write through the tested variable.
+
+```nz fragment error="can no longer be used"
+var t = (1, new List<int>());
+if (t is (_, var a)) {
+    t.Item2 = new List<int>();
+    Console.WriteLine($"{a.Count}");
+}
+```
+
 ## Arrays and lists made from their elements
 
 `new T[] { a, b }`, `new[] { a, b }`, `{ a, b }` and the collection expression `[a, b]` take each element as `Add` does: an owned element (a class object, a list, an array) moves in, and a string or a `Shared<T>` handle is counted. The elements are evaluated left to right, and only then is the array or list made, so an element that stops the program leaves nothing half built. A collection that nothing takes (a temporary argument) is dropped at the end of its statement. An element of another collection still cannot be moved out to build a new one:
