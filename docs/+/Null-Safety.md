@@ -204,6 +204,23 @@ string? u = "a";
 Console.WriteLine($"[{s + "x"}] [{t}] [{u + "b" + s}]");
 ```
 
+## `Value` and `HasValue`
+
+An optional of a value type is C#'s `Nullable<T>`: `int?`, `long?`, `double?`, `bool?`, `char?`, an enum, a struct or a tuple. As in C#, `HasValue` tells whether it holds a value and `Value` is the value. Both are read-only, and `Value` is a copy of the value, not a variable: a write to a part of it (`p.Value.X = 5`, `p.Value.X++`, `p.Value.X += 2`, passing `p.Value.X` by `ref`) is an error, as C# refuses it (CS1612); a method that changes its receiver, called on `p.Value`, changes that copy and leaves `p` as it was, as in C#. A struct that owns a class object or a collection is read in place (a class or a list is a reference in C#, so changing the object it refers to changes the optional's own object too); a method that may change such a struct is refused on `Value` for now, since it is not copied. The optional's members hide a struct's own fields of the same names, as in C#: on `V? v`, where `struct V` has fields `Value` and `HasValue`, `v.Value` is the whole `V` and `v.HasValue` tells whether `v` is null; read the fields as `v.Value.Value` and `v.Value.HasValue`. `Value` of a `null` optional stops the program with `InvalidOperationException: Nullable object must have a value.`, where C# throws that exception. A null test or `HasValue` in a condition narrows the variable as `!= null` does, and `Value` is still allowed on it. A `string?` or an optional object is no `Nullable<T>` in C#, so it has neither member; check it with `!= null`.
+
+```nz fragment output="3 True\nFalse\n"
+int? q = 3;
+int? none = null;
+int r = q.Value;
+Console.WriteLine($"{r} {q.HasValue}");
+Console.WriteLine(none.HasValue);
+```
+
+```nz fragment
+int? none = null;
+Console.WriteLine(none.Value);   // stops the program
+```
+
 ## Current limits
 
 - **Fields are never narrowed**, only local variables and parameters. Copy to a local variable first.

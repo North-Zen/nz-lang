@@ -55,6 +55,24 @@ NZ strings are UTF-8. Every position counts bytes: `Length`, `IndexOf`, `Substri
 
 Comparisons, searches and case changes never depend on the machine's culture: `StartsWith`, `IndexOf`, `CompareTo`, `ToUpper` behave as their `Ordinal`/`Invariant` forms. The overloads that take a `StringComparison` accept `Ordinal` and `OrdinalIgnoreCase` and stop for the culture values. `char.IsLetter` and the other classifications use the Unicode tables .NET uses.
 
+## `ToString()` of values
+
+A number, `bool`, `char` or enum has `ToString()` with no arguments, as in C#: the text an interpolation `{x}` gives. An enum value gives its member's name, or its number when no member has that value (`(K)7`). The result is a new `string` that the caller owns, like any other string a member returns. `Console.WriteLine(k)` with an enum value is not accepted yet (C# boxes it to an `object`): write `Console.WriteLine(k.ToString())` or `Console.WriteLine($"{k}")`.
+
+```nz output="a 5 B 1 7\n"
+package main;
+import std.io.Console;
+
+enum K { A, B = 5 }
+
+void Main(string[] args) {
+    char c = 'a';
+    int n = 5;
+    K k = K.B;
+    Console.WriteLine($"{c.ToString()} {n.ToString()} {k.ToString()} {K.A.ToString().Length} {((K)7).ToString()}");
+}
+```
+
 ## Order you can rely on
 
 - `Dictionary` and `HashSet` visit their entries in insertion order, also after removals. .NET's order is unspecified (it reuses removed slots), so a C# program that depends on it is already fragile; an NZ program gets the same order on every run and machine.
@@ -63,6 +81,27 @@ Comparisons, searches and case changes never depend on the machine's culture: `S
 Hashing never affects the order. Hashes are keyed with a random seed chosen once per process (from the OS: `getrandom`, `arc4random_buf`, `BCryptGenRandom`), so crafted keys cannot make a table slow. If the OS gives no randomness, a weaker seed made from the time, the process id and addresses is used.
 
 `NZ_HASH_SEED=<decimal number>` fixes the seed, to reproduce a run exactly. It turns the protection off: whoever knows the seed can choose keys that all collide (40,000 such keys take seconds instead of milliseconds), so never set it for a program that reads keys from others. A value that is not a decimal number below 2^64 stops the program.
+
+## Sorting and removing
+
+`List<T>.Sort()` orders ascending; the elements are moved, never copied, so each element keeps its one owner. A `double` or `float` list puts `NaN` first, as .NET does. `List<T>.Remove(item)` removes and drops the first element equal to `item` and returns whether it found one; equality is the one `Contains` and `IndexOf` use. `string.ToCharArray()` is a new `char[]` with one `char` (Unicode scalar value) per character. `double.IsNaN`, `IsInfinity`, `IsFinite`, `IsPositiveInfinity` and `IsNegativeInfinity` (and the same on `float`) are as in .NET.
+
+```nz output="c a b|2|3|True\n"
+package main;
+import std.io.Console;
+import std.collections.List;
+
+void Main(string[] args) {
+    var names = new List<string>();
+    names.Add("b");
+    names.Add("c");
+    names.Add("a");
+    names.Sort();
+    bool removed = names.Remove("c");
+    char[] letters = "abc".ToCharArray();
+    Console.WriteLine($"{letters[2]} {names[0]} {names[1]}|{names.Count}|{letters.Length}|{removed}");
+}
+```
 
 ## Keys and elements
 
@@ -90,7 +129,14 @@ A recursive delete keeps one open folder handle per level of the tree on Linux a
 | culture-sensitive defaults | ordinal and invariant | the same output on every machine |
 | `Dictionary`/`HashSet` order unspecified | insertion order | see above |
 | changing a dictionary inside its `foreach` (`d[k] = v` on an existing key, `Remove`), or `Remove` on a `HashSet` inside its `foreach` | refused when compiling | the loop reads the table in place |
+| `List<string>.Sort()` orders by the culture | orders ordinally (UTF-16 code unit order, as `string.CompareOrdinal`) | see "Culture: always ordinal" |
+| `List<T>.Sort()` for any `T` that is `IComparable`; `Remove` and `Contains` for any `T` with `Equals` | `Sort` for an integer type, `char`, `float`, `double` and `string`; `Remove`, `Contains` and `IndexOf` for a hash key type; others are refused when compiling | interfaces come later |
+| `Console.WriteLine(k)` with an enum value boxes it to `object` | refused; write `Console.WriteLine(k.ToString())` | NZ has no `object` |
 | `GetValueOrDefault(key)` on `string` values gives null | refused; use `TryGetValue` or the two-argument form | an NZ `string` is never null |
+| `var r = q;` inside `if (q.HasValue)` makes `r` an `int?` | `r` is an `int`, the type `q` is narrowed to, so `r.HasValue` is an error | NZ narrows the variable itself |
+| `ToCharArray()` gives one `char` per UTF-16 code unit (`"é😀a"` has 4) | one `char` per Unicode scalar value (`"é😀a"` has 3) | a C# `char` is a UTF-16 unit, an NZ `char` a scalar value |
+| `ToString()` of a `[Flags]` enum value names each flag (`R, W`) | the number (`3`), and `[Flags]` gets the warning ``unknown attribute `Flags` `` | attributes have no effect yet |
+| `dotnet run -- <args>` passes any argument the system gives | `nzc run f.nz -- <args>` refuses an argument that is not valid UTF-8 (exit code 2; the program does not start) | an NZ `string` is UTF-8 |
 
 ## Windows paths not yet proven by CI
 
