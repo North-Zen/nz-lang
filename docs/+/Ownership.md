@@ -740,6 +740,57 @@ Two shared objects that hold strong handles to each other keep each other alive,
 
 Dropping shared objects needs a bounded C stack whatever their shape, as for owned classes: a chain through a field of the payload's own type (`Shared<Node>? Next` in `Node`), a list of handles on each step, alternating types or `Arc<T>` links can be as long as memory allows.
 
+## Constructors and object initializers
+
+`new T(args)` passes each argument to the chosen [constructor](../README.md#constructors) by the mode of the parameter it binds to: an argument without a modifier is **moved** into the constructor, an `in` or `ref` argument is lent for the call. A parameter the constructor stores in a field belongs to the new object from then on; one it does not store is dropped when the constructor returns, as in any method (also on an early `return`). The same variable passed twice by value is a use after a move:
+
+```nz error="use of moved value"
+package main;
+
+class Node {
+    int V;
+}
+
+class Pair {
+    Node A;
+    Node B;
+
+    Pair(Node a, Node b) {
+        A = a;
+        B = b;
+    }
+}
+
+void Main(string[] args) {
+    var n = new Node();
+    var p = new Pair(n, n);
+}
+```
+
+The object exists before its constructor runs, with every field zeroed. A field whose type has no default (a `string`, a class, a list, a union) is never read while it is zeroed: in a constructor that does not chain, every path assigns it before it is read, before `this` is used (a method call, `this` as a value), and before a local function or a `defer` that reads it can run; the arguments of `: this(...)` do not use the object at all; a `required` member is not read in a constructor, since the object initializer sets it afterwards. A field whose type has a default (a number, `bool`, `char`, an optional) may be read while zeroed: it reads as its default. A primary constructor's parameters are locals of the field initializers: moving one into two fields is a use after a move.
+
+The values of an object initializer move into the new object's fields, in the order written; the value a field held before (its initial value, or what the constructor stored) is dropped once the new value is computed. Below, the first `Node` is freed: what stays alive is the crate and its new node (the program's `args` array is one more live object):
+
+```nz output="3\n"
+package main;
+
+import std.io.Console;
+import std.diag.Diag;
+
+class Node {
+    int V = 1;
+}
+
+class Crate {
+    Node N = new Node();
+}
+
+void Main(string[] args) {
+    var c = new Crate { N = new Node() };
+    Console.WriteLine($"{Diag.LiveObjects()}");
+}
+```
+
 ## Named arguments and extension receivers
 
 The rules below apply to NZ code (C# style) as written in section 1.12 of the README.

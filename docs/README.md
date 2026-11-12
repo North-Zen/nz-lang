@@ -1447,7 +1447,7 @@ void Main(string[] args) {
 }
 ```
 
-`new Point()` needs a default for every parameter: a non-optional class, `string` or struct has none in NZ, because a non-optional type never holds `null` (section 3), where C# would leave it `null`. So `new Ok<C>()` with a class `C`, and `new P()` for `record struct P(string Name)`, are errors that ask for the values (`new Ok<C>(Value)`); declare the parameter optional (`string? Name`) to allow `new P()`. `record class`, `with`, record equality and `ToString` are not supported yet. A program's own type named `Result` hides the built-in one. The `?` operator that returns an `Err` early comes in a later batch.
+`new Point()` needs a default for every parameter: a non-optional class, `string` or struct has none in NZ, because a non-optional type never holds `null` (section 3), where C# would leave it `null`. So `new Ok<C>()` with a class `C`, and `new P()` for `record struct P(string Name)`, are errors that ask for the values (`new Ok<C>(Value)`); declare the parameter optional (`string? Name`) to allow `new P()`. `record class P(int X);` (or `record P(int X);`) is a positional record class: the same public fields and `new P(1)`, but it is not taken apart with `var (a, b) = p;`. `with`, record equality and `ToString` are not supported yet. A program's own type named `Result` hides the built-in one. The `?` operator that returns an `Err` early comes in a later batch.
 
 ## 1.8 Constants
 
@@ -2202,9 +2202,9 @@ void Main(string[] args) {
 }
 ```
 
-Objects are created without a constructor, so **every field and property must have an initial value or an optional type**. Numbers, `bool` and `char` are zero automatically; other types are not:
+A field or property needs a value: **an initial value, an optional type, or an assignment in every constructor**. Numbers, `bool` and `char` are zero automatically; other types are not:
 
-```nz error="initializer"
+```nz error="needs a value"
 package main;
 
 class User {
@@ -2224,6 +2224,112 @@ class User {
 }
 
 void Main(string[] args) { }
+```
+
+### Constructors
+
+A **constructor** is a member named after its type, with no return type, as in C#. A type may declare several; `new` picks the one whose parameters take the arguments (named and default arguments work as in calls), and when several do, the one whose parameter types equal the argument types. A type that declares a constructor has only the ones it declares; a type that declares none has the implicit `new T()`. A constructor is as visible as its type unless it is written `private`.
+
+```nz output="Ada 36\nnobody 0\n"
+package main;
+
+import std.io.Console;
+
+class Person {
+    string Name;
+    int Age;
+
+    Person(string name, int age) {
+        Name = name;
+        Age = age;
+    }
+
+    Person() : this("nobody", 0) { }
+}
+
+void Main(string[] args) {
+    var a = new Person("Ada", 36);
+    var b = new Person();
+    Console.WriteLine($"{a.Name} {a.Age}");
+    Console.WriteLine($"{b.Name} {b.Age}");
+}
+```
+
+`: this(...)` runs another constructor of the same type first. A field without an initial value whose type has no default (`Name` above) must be assigned on **every path** of every constructor that does not chain, before it is read and before `this` is used (a method call, `this` passed as a value). A local function called, or a `defer` that runs, while such a field is unassigned counts as a read. The arguments of `: this(...)` run before any constructor, so they may use the parameters and constants but no member of the object and no `this` (as in C#). A constructor that chains starts with every field assigned:
+
+```nz error="is not assigned on every path"
+package main;
+
+class Token {
+    string Text;
+
+    Token(bool empty) {
+        if (!empty) {
+            Text = "x";
+        }
+    }
+}
+
+void Main(string[] args) { }
+```
+
+Creating an object runs, in order: the arguments of `new` from left to right, the field initializers (once, in the constructor that does not chain), the constructor bodies (a chained one first), then the object initializer.
+
+A **primary constructor** (C# 12) writes the parameters after the type's name; the field initializers read them. Every other constructor of the type chains to it with `: this(...)`. Using a primary-constructor parameter in a method (which C# allows) is not supported yet: store it in a field.
+
+```nz output="sum 3\n"
+package main;
+
+import std.io.Console;
+
+class Labelled(string label, int a, int b) {
+    string Label = label;
+    int Total = a + b;
+}
+
+void Main(string[] args) {
+    var l = new Labelled("sum", 1, 2);
+    Console.WriteLine($"{l.Label} {l.Total}");
+}
+```
+
+### Object initializers
+
+`new T(args) { A = a, B = b }` sets fields and settable properties after the constructor ran, in the order written; `new T { ... }` uses the parameterless constructor. A member is set once per initializer.
+
+```nz output="3 4\n"
+package main;
+
+import std.io.Console;
+
+class Point {
+    int X;
+    int Y;
+}
+
+void Main(string[] args) {
+    var p = new Point { X = 3, Y = 4 };
+    Console.WriteLine($"{p.X} {p.Y}");
+}
+```
+
+A `required` member (C# 11) is set by the object initializer of every `new`; it has no initial value. A `readonly` field is assigned only by its initial value and by the constructors of its type (through `F` or `this.F`), and never by an object initializer. The parts of a `readonly` struct field are the field: they are not assigned or passed by `ref` elsewhere either. A method called on a `readonly` struct field outside those constructors runs on a copy, as in C#, so the field does not change; a struct that owns an object (a class, a list) cannot be copied, so a method that changes it is refused there:
+
+```nz error="must set the required member"
+package main;
+
+class User {
+    required string Id;
+    readonly int Created;
+
+    User() {
+        Created = 1;
+    }
+}
+
+void Main(string[] args) {
+    var u = new User();
+}
 ```
 
 **Properties** use `get` and `set`; a property without `set` cannot be assigned:
@@ -2685,7 +2791,7 @@ void Main(string[] args) {
 - A **static field** is a static (see [Statics](#19-statics-and-unsafe)): the same initializer rules, `unsafe` for a mutable one, and an owned one is dropped at exit. It is not part of the object.
 - A **member constant** is static already: `static const` is an error.
 - A **static method** may use the static members and constants of its type by bare name, and is called by bare name from the type's other methods and local functions.
-- A plain `readonly` field (not `static`) waits for constructors.
+- A plain `readonly` field (not `static`) is assigned only by its initial value and the constructors of its type (see [Object initializers](#object-initializers)).
 - Static members of generic types, static properties, and static members of interfaces are not supported yet.
 
 ## 2.8 Type aliases
