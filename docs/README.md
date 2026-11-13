@@ -2450,6 +2450,149 @@ class Item {
 void Main(string[] args) { }
 ```
 
+As in C#, an **auto-property** (`{ get; set; }`, `{ get; }`, `{ get; init; }`) stores its value like a field and may have an initializer (`= value;`). One difference from C#: a struct auto-property is a variable in NZ, so `c.P.X = 1` changes the stored struct, where C# refuses it (CS1612) because a C# property always returns a copy; with a computed property NZ refuses it as C# does. A get-only auto-property is set by its initializer or in a constructor of its type; an `init` property also by an object initializer. One accessor may be `private` (`{ get; private set; }`): outside the type the property is then read-only.
+
+```nz output="Ann 3 1\n"
+package main;
+import std.io.Console;
+
+public class Account {
+    public string Owner { get; }
+    public int Visits { get; private set; } = 2;
+    public int Id { get; init; }
+
+    public Account(string owner) {
+        Owner = owner;
+    }
+
+    public void Visit() {
+        Visits++;
+    }
+}
+
+void Main(string[] args) {
+    var a = new Account("Ann") { Id = 1 };
+    a.Visit();
+    Console.WriteLine($"{a.Owner} {a.Visits} {a.Id}");
+}
+```
+
+A **computed property** has accessors with bodies: `get { ... }` returns the value, `set { ... }` (or `init { ... }`) receives it as `value`. It has no storage of its own. `=> expr` is a getter written as one expression, for the whole property (`int Area => W * H;`) or for one accessor (`get => n;`). Accessors are all bodies or all `;`, never mixed.
+
+```nz output="Temp 20 68 21\n"
+package main;
+import std.io.Console;
+
+class Thermometer {
+    double celsius;
+
+    public double Celsius {
+        get { return celsius; }
+        set {
+            if (value < -273.15) {
+                return;
+            }
+            celsius = value;
+        }
+    }
+
+    public double Fahrenheit => celsius * 9 / 5 + 32;
+}
+
+void Main(string[] args) {
+    var t = new Thermometer();
+    t.Celsius = 20;
+    t.Celsius = -300;
+    double f = t.Fahrenheit;
+    t.Celsius += 1;
+    Console.WriteLine($"Temp 20 {f} {t.Celsius}");
+}
+```
+
+Reading a computed property calls its getter, assigning calls its setter, and `+=`, `++` and the other compound forms call the getter once and the setter once. As in C#, the receiver and the index of a compound write are evaluated once, first, then the getter, the value and the setter; a value that could change the receiver's variable or field before the setter runs (`c.P += Bump(ref c)`) is refused for now. A computed property is not a variable: it cannot be passed by `ref`, a setter cannot change a struct value that is not a variable (a call result, a list element, another property's value), and a field of a struct value that a getter, an indexer or an operator gave cannot be assigned (`c.P.X = 1`, `g[0].X++`: the change would be lost; C# CS1612), as in C#:
+
+```nz error="not a variable"
+package main;
+
+struct Size {
+    int w;
+    public int W { get { return w; } set { w = value; } }
+}
+
+Size Make() { return new Size(); }
+
+void Main(string[] args) {
+    Make().W = 3;
+}
+```
+
+Not supported yet: using the value of an assignment, a compound assignment or `++`/`--` through a computed property inside a larger expression (write it as a statement); a compound assignment whose value may change the receiver's variable or field before the setter runs (`c.P += Bump(c)` where `Bump` takes `ref C`, or any call when the receiver is reached through a `Shared<T>` handle; compute the value into a variable first); a computed property set in an object initializer or marked `required`; a property (computed or auto) inside a property pattern (`c is { P: > 0 }`: property patterns read fields; test `c.P is > 0` instead, which calls the getter once); static properties; accessor bodies in an interface.
+
+An **indexer** lets a class or struct be indexed like an array: `T this[P p] { get { ... } set { ... } }`, as in C#. Its accessors need bodies (it has no storage), the setter receives `value`, and it is written `public` or `private`. A user indexer does not make a type usable in `foreach`.
+
+```nz output="16 0 n3\n"
+package main;
+import std.io.Console;
+
+class Grid {
+    int[] cells = new int[4];
+
+    public int this[int i] {
+        get { return cells[i]; }
+        set { cells[i] = value; }
+    }
+}
+
+class Names {
+    public string this[int i] => $"n{i}";
+}
+
+void Main(string[] args) {
+    var g = new Grid();
+    g[1] = 5;
+    g[1] += 2;
+    g[1]++;
+    g[1] *= 2;
+    var n = new Names();
+    Console.WriteLine($"{g[1]} {g[0]} {n[3]}");
+}
+```
+
+**Operators** can be declared by a class or struct, as in C#: `public static T operator +(A a, B b)`. The operators that can be declared are `+ - ! ~ ++ --` (unary) and `+ - * / % == != < > <= >= & | ^ << >>` (binary); `==` and `!=`, `<` and `>`, `<=` and `>=` are declared in pairs, at least one parameter has the declaring type, and `++`/`--` take and return it. The operands are lent with `in` and never moved; the result is a new value. `a += b` uses `+`, and `a == null` stays the null test.
+
+```nz output="8 6 -6 False True\n"
+package main;
+import std.io.Console;
+
+struct Vec {
+    public int X;
+
+    public static Vec operator +(Vec a, Vec b) => Make(a.X + b.X);
+    public static Vec operator *(Vec a, int k) => Make(a.X * k);
+    public static Vec operator -(Vec a) => Make(-a.X);
+    public static Vec operator ++(Vec a) => Make(a.X + 1);
+    public static bool operator ==(Vec a, Vec b) => a.X == b.X;
+    public static bool operator !=(Vec a, Vec b) => a.X != b.X;
+
+    public static Vec Make(int x) {
+        var v = new Vec();
+        v.X = x;
+        return v;
+    }
+}
+
+void Main(string[] args) {
+    var a = Vec.Make(2);
+    var b = Vec.Make(3);
+    var c = a + b * 2;
+    a += b;
+    a++;
+    Console.WriteLine($"{c.X} {a.X} {(-a).X} {a == b} {a != b}");
+}
+```
+
+Not supported yet: an indexer with several parameters, more than one indexer or more than one operator with the same symbol in a type, an indexer written without `public` or `private`, an indexer or operator in an interface, operators of a generic type, conversion operators (`implicit`, `explicit`) and `true`/`false`, and using the value of a user `++` or `--` (write it as a statement).
+
 ## 2.2 Interface & Enum
 
 ```nz

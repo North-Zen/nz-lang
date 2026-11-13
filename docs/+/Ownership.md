@@ -965,6 +965,30 @@ void Main(string[] args) {
 
 Through a `Shared<T>` handle, the extension's receiver is the shared object, lent for the call with the run-time lend of [shared objects](#shared-objects): with `this in` exactly as for the plain call `Get(s)`; with `this ref` the extension writes the shared object under a write lend, so no other lend of it may be open during the call (through an `Arc<T>`, `this ref` is refused: its object never changes). A plain function with a `ref C` parameter does not take a `Shared<C>` at all.
 
+## Properties with accessors
+
+A computed property (accessors with bodies, guide section 2.1) has no storage: reading it is a call of its getter, assigning it a call of its setter, so every rule of a method call applies, with the receiver lent the way the accessor needs it. A getter's result is a new value, like a call's: a getter cannot move a field out (`return items;` of an owned field is the field rule), and its result can be kept, lent to an `in` parameter for the call, or dropped at the end of the statement. A setter takes `value` by value, so an owned value assigned to a computed property moves:
+
+```nz error="use of moved value"
+package main;
+
+class Item { }
+
+class Bag {
+    Item? held;
+    public Item Held { set { held = value; } }
+}
+
+void Main(string[] args) {
+    var b = new Bag();
+    var i = new Item();
+    b.Held = i;
+    var j = i;
+}
+```
+
+A getter or setter that changes its object is a call that changes its receiver: it cannot run on an `in` parameter, and it cannot run while another argument of the same call holds a part of that object. An auto-property (`{ get; set; }`) stores its value like a field and follows the field rules.
+
 ## Pointers and `fixed`
 
 Inside `unsafe` a program has pointers (guide section 1.13). This is what `unsafe` turns **on**, and nothing else: pointer types and operators, `sizeof` of unmanaged types, `stackalloc`, `fixed`, `NativeMemory`, calls to `extern` functions and to functions with pointers in their signature, and mutable statics. What **stays checked** inside `unsafe`: types, definite assignment, null safety, integer overflow and checked casts, array and list indexes, and the ownership and borrowing of managed values (classes, strings, arrays, lists, owned structs, tuples). Only pointer arithmetic and `p[i]` are unchecked.
