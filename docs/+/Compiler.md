@@ -206,6 +206,16 @@ The NZ code (C# style) this section describes is in `docs/README.md` section 1.1
 
 **Built-in packages written in NZ.** `prelude::NZ_PACKAGES` lists packages whose source is NZ code (C# style) in the compiler (`prelude/result.nz`: `std.result` with `Result<T, E>`, `Ok<T>`, `Err<E>`). Their unit paths start with `<builtin>/`, their names have the prelude rank in every `FileScope` (a program's own declaration hides them), and the code generator emits only what the program uses. They are added where a program is checked or built (`nzc`, `api::Compilation`, `sema::check_source`, `parser::parse_with_builtins`), not by the loader, so `nzc parse` and the loader show the program's own files. Positional `record struct` (`parser/records.rs`, `Module::record_params`) is what `Ok` and `Err` are made of: its parameters are public fields, `new R()` zero-fills them when each type has a default (`new_expr.rs::check_record_defaults`, NZ1314), and `SymbolTable::deconstruct_parts` gives `var (a, b) = r;` its parts, as it does a tuple's (checker, code generation and the semantic index share it).
 
+## Error propagation `?` (B4d)
+
+**Parser.** `Expr::Propagate { value }` (`parser/exprs.rs::parse_postfix`): a `?` after an expression is the operator when the next token cannot start an expression (`parser/scan.rs::can_start_expression`, the same table `is T?` uses), otherwise the conditional, whose missing `:` gets a hint (NZ0220). The unit test `can_start_expression_matches_parse_prefix` keeps the table equal to what `parse_prefix` accepts.
+
+**Checker.** `sema/propagate.rs`: the library `Result` by its path (`prelude::RESULT_PATH`) or an optional; the function's return type comes from `FunctionContext` (`function_name` is `None` in initializers, `defer_loop_depth` marks a deferred statement). Codes NZ1640-NZ1645.
+
+**Flow.** `sema/ownership/flow.rs::exit_function` is shared by `return` and `?`; a `?` consumes its operand, then exits on one branch (`maybe_runs`). `sema/fields_assigned.rs::leave_function` does the same for the definite assignment of fields (a `?` in a constructor itself is refused by the checker, so it matters inside its local functions).
+
+**C.** `codegen/propagate.rs` evaluates the operand into a temporary, tests the tag (`Err` is case 2) or the optional, and on failure builds the function's result, then writes `exit_releases` (`codegen/exits.rs`) and the defers and drops of every scope, as `return` does. What an exit in the middle of an expression must release lives on stacks: `Emitter::outer_fresh` (the temporaries of the statements and branches around it), `writeback_stack` and `pin_stack` (the lends and copy-outs of the calls around it: a pending `nz_rc_unlend_write` is still a read lend there, a copy-out is not written), and `in_flight` (values a call, tuple, record or collection has taken but not stored: `hold_in_flight` after each operand, `land` once the consumer runs). `in_flight` is recorded only in routines holding a `?` (`ModuleFacts::propagates_in`), so other programs compile to the same C.
+
 ## Systems capability (B8)
 
 | File | Content |

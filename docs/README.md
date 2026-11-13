@@ -809,7 +809,7 @@ The order of precedence, from lowest:
 | | `*` `/` `%` | left |
 | | `..` (range) | none |
 | | `!` `+` `-` `~` `^` `++` `--` `(T)x` (prefix) | right |
-| highest | `.` `?.` `()` `[]` `++` `--` (postfix) | left |
+| highest | `.` `?.` `()` `[]` `++` `--` `?` (postfix) | left |
 <!-- /GEN -->
 
 `is` binds at the same level as the relational operators.
@@ -1448,7 +1448,97 @@ void Main(string[] args) {
 }
 ```
 
-`new Point()` needs a default for every parameter: a non-optional class, `string` or struct has none in NZ, because a non-optional type never holds `null` (section 3), where C# would leave it `null`. So `new Ok<C>()` with a class `C`, and `new P()` for `record struct P(string Name)`, are errors that ask for the values (`new Ok<C>(Value)`); declare the parameter optional (`string? Name`) to allow `new P()`. `record class P(int X);` (or `record P(int X);`) is a positional record class: the same public fields and `new P(1)`, but it is not taken apart with `var (a, b) = p;`. `with`, record equality and `ToString` are not supported yet. A program's own type named `Result` hides the built-in one. The `?` operator that returns an `Err` early comes in a later batch.
+`new Point()` needs a default for every parameter: a non-optional class, `string` or struct has none in NZ, because a non-optional type never holds `null` (section 3), where C# would leave it `null`. So `new Ok<C>()` with a class `C`, and `new P()` for `record struct P(string Name)`, are errors that ask for the values (`new Ok<C>(Value)`); declare the parameter optional (`string? Name`) to allow `new P()`. `record class P(int X);` (or `record P(int X);`) is a positional record class: the same public fields and `new P(1)`, but it is not taken apart with `var (a, b) = p;`. `with`, record equality and `ToString` are not supported yet. A program's own type named `Result` hides the built-in one, and `?` (below) works only on the built-in one.
+
+### Passing errors on with `?`
+
+The postfix operator `?` passes an error on. On a `Result<T, E>` it gives the `Ok` value, or makes the enclosing function return the `Err` at once; on a `T?` it gives the value, or makes the function return `null`. Real C# has no such operator (it throws exceptions instead); NZ takes it from Rust.
+
+```nz output="ok 2\nerr bad\n2 -1\n"
+package main;
+
+import std.io.Console;
+
+Result<int, string> Parse(string s) {
+    if (s == "1") {
+        return new Ok<int>(1);
+    }
+    return new Err<string>("bad");
+}
+
+Result<int, string> Twice(string s) {
+    int n = Parse(s)?;
+    return new Ok<int>(n * 2);
+}
+
+int? Find(int k) {
+    if (k > 0) {
+        return k;
+    }
+    return null;
+}
+
+int? Next(int k) {
+    int v = Find(k)?;
+    return v + 1;
+}
+
+string Show(Result<int, string> r) => r switch {
+    Ok<int> ok => $"ok {ok.Value}",
+    Err<string> e => $"err {e.Error}",
+};
+
+void Main(string[] args) {
+    Console.WriteLine(Show(Twice("1")));
+    Console.WriteLine(Show(Twice("x")));
+    Console.WriteLine($"{Next(1) ?? -1} {Next(0) ?? -1}");
+}
+```
+
+The rules:
+
+- `?` may stand anywhere in a function body where an expression can: in an argument, a condition, an arm of `?:`, `??`, `&&`, `||` or `switch`, a `when` guard, an interpolation hole, a loop header. It leaves the function exactly as `return` would (see [Ownership: `?` leaves the function like `return`](+/Ownership.md#-leaves-the-function-like-return)). Inside a local function it leaves that local function.
+- On a `Result<T, E>` the function must return a `Result` whose error type is exactly `E` (no conversion); the success types may differ. On a `T?` the function must return an optional type (any `U?`). A `Result` operand in a function returning an optional, or the other way round, is an error. `Main` returns `void` or `int`, so `?` cannot stand in `Main`.
+- `?` cannot stand inside `defer`, nor in a field, constant or static initializer.
+- The operand is evaluated once, where it stands, and is consumed: a variable that holds an owned `Result` is moved, and a field or a list element that owns something cannot be the operand (copy a `Result` of copyable values freely).
+- `x?` does not make `x` non-null afterwards (a later batch may add that).
+- A `?` is not a statement on its own: as in C#, only an assignment, a call, `++`, `--` or `new` can be one, so `Check()?;` is an error for now; name the value instead (`var ignored = Check()?;`).
+
+**Reading `?` next to the conditional operator.** After an expression, a `?` followed by a token that can start an expression is the conditional operator `c ? a : b`, as in C#; otherwise it passes an error on. So `f()? - 1` is a conditional (and an error without its `:`); write `(f()?) - 1` to pass the error on and then subtract. The same holds for `+`, `-`, `*`, `&`, `!`, `~`, `(`, `[`, `^` and `..` after the `?`. `?.`, `?[` and `??` are operators of their own, so `f()?.x` is a null-conditional member access and `f()? ?? 0` passes the error on, then coalesces. In an interpolation hole with a format, put the operator in parentheses: `$"{(f()?):D2}"`.
+
+```nz error="(f()?)"
+package main;
+
+Result<int, string> Get() {
+    return new Ok<int>(3);
+}
+
+Result<int, string> Less() {
+    int n = Get()? - 1;
+    return new Ok<int>(n);
+}
+
+void Main(string[] args) {
+}
+```
+
+The error types must be identical:
+
+```nz error="must be identical"
+package main;
+
+Result<int, int> Code() {
+    return new Err<int>(1);
+}
+
+Result<int, string> Run() {
+    int n = Code()?;
+    return new Ok<int>(n);
+}
+
+void Main(string[] args) {
+}
+```
 
 ## 1.8 Constants
 

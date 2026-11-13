@@ -145,7 +145,7 @@ void Main(string[] args) {
 
 A value made on the spot that a `switch` or `is` tests lives until the end of its statement (see "Freed at scope exit"). A method of a union receives `this` borrowed, as a struct's method does; a method that changes a case through `this` cannot be called on an `in` parameter. Assigning a pattern variable that reads a struct case which owns something, in place in its union, is not supported yet.
 
-An owned payload leaves a `Result` (README section 1.7) only through a borrow today: the `switch` binding reads `ok.Value` but cannot take it. The `?` operator (batch B4d) will move the payload out of a `Result` the function owns.
+A `switch` binding only borrows the payload of a `Result` (README section 1.7): it reads `ok.Value` but cannot take it. The `?` operator moves the payload out of a `Result` the function owns (see [`?` leaves the function like `return`](#-leaves-the-function-like-return)).
 
 ### Pattern variables at depth
 
@@ -511,6 +511,83 @@ void Main(string[] args) {
 ```
 
 Nothing a program can do today observes the order inside one drop: there are no destructors yet, and `Diag.LiveObjects()` and the `NZ_ALLOC_REPORT=1` report are read between statements. The order is fixed now because it becomes the order in which destructors run once they exist. Real C# has no deterministic destructor order for managed objects (a finalizer runs when the garbage collector decides, `IDisposable.Dispose` when the program calls it), so this rule is NZ's own (owner decision, 2026-11-12); it is the parent-before-members order of Rust and C++. Each field's value is read before its object is freed, so no drop reads freed memory, and nothing is freed while a borrow of it lives (the borrow rules above). The order has a memory cost in long chains: the fields declared after a chain's link drop only once the rest of the chain has, so while the drop runs the runtime's worklist grows by one entry (32 bytes) per owning field declared after the link, per node (see README, "Dropping a deep structure needs only a bounded stack").
+
+## `?` leaves the function like `return`
+
+When `?` finds an error (an `Err`, or no value), the function returns at once, from the middle of the expression, and the exit frees what `return` would, in the same order:
+
+1. The operand was evaluated once, where it stands, into a value of its own; a variable read as the operand was moved.
+2. The error moves into the function's result before anything is dropped, as `return` computes its value first. On success the `Ok` value (or the optional's value) moves out instead; nothing is left to drop either way.
+3. What the statement holds so far is freed: values made on the spot that nothing took yet, and owned values already taken by a call, a constructor, a tuple, a record or a collection being built (the call never happens, so they would have no owner). Run-time lends of shared objects taken for a call that never happens are given back, and a list element passed by `ref` is not written back.
+4. The `defer`s and drops of every open scope run, innermost scope first, each scope's actions in their one reverse order of registration. A variable or a `defer` written after the `?` was not registered yet, so it is not touched.
+5. The function's last drops run (values made on the spot that pattern variables test), and it returns.
+
+```nz output="defer 1\nerr fail\ndefer 1\nok 1\n"
+package main;
+
+import std.io.Console;
+import std.diag.Diag;
+
+class Box {
+    int N;
+}
+
+int Use(Box b, int n) {
+    return n;
+}
+
+Result<int, string> Check(bool fail) {
+    if (fail) {
+        return new Err<string>("fail");
+    }
+    return new Ok<int>(1);
+}
+
+Result<int, string> Steps(bool fail, long start) {
+    Box a = new Box();
+    defer Console.WriteLine($"defer {Diag.LiveObjects() - start}");
+    Box b = new Box();
+    // On failure the new Box taken by `Use` is freed, then `b`, then the defer runs, then `a`.
+    int n = Use(new Box(), Check(fail)?);
+    Box c = new Box();
+    return new Ok<int>(n);
+}
+
+string Show(Result<int, string> r) => r switch {
+    Ok<int> ok => $"ok {ok.Value}",
+    Err<string> e => $"err {e.Error}",
+};
+
+void Main(string[] args) {
+    long start = Diag.LiveObjects();
+    Console.WriteLine(Show(Steps(true, start)));
+    Console.WriteLine(Show(Steps(false, start)));
+}
+```
+
+For the move analysis `?` is a `return` on one path: a `defer` that reads a variable moved before the `?` is an error, and a `ref` parameter moved from must hold a value again at every `?`, as at every `return`. The operand is consumed on both paths:
+
+```nz error="use of moved value"
+package main;
+
+class C {
+    int N;
+}
+
+Result<C, string> Make() {
+    return new Ok<C>(new C());
+}
+
+Result<int, string> Twice() {
+    Result<C, string> r = Make();
+    C c = r?;
+    var again = r;
+    return new Ok<int>(c.N);
+}
+
+void Main(string[] args) {
+}
+```
 
 ## Strings
 
