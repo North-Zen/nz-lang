@@ -709,7 +709,7 @@ void Main(string[] args) {
 }
 ```
 
-Casts are read as C# reads them, with two differences. `(Name)(x)` is a call of `Name`, not a cast, so write a cast of a parenthesised value to a class or enum with a variable or `checked(...)`/`unchecked(...)`. And `(int)b switch { ... }` casts the result of the `switch`, where C# casts `b` first; write `((int)b) switch { ... }` for that (see "Not yet" in section 7). A cast to a generic type (`(List<int>)x`) is not supported.
+Casts are read as C# reads them, with one difference. `(Name)(x)` is a call of `Name`, not a cast, so write a cast of a parenthesised value to a class or enum with a variable or `checked(...)`/`unchecked(...)`. A cast binds tighter than `switch`, as in C#: `(int)b switch { ... }` casts `b` first (the order of precedence is in section 1.3). A cast to a generic type (`(List<int>)x`) is not supported.
 
 ```nz fragment output="8 16 15 -4 15 5 False False 1099511627776\n"
 int a = 12; a &= 10;
@@ -807,12 +807,26 @@ The order of precedence, from lowest:
 | | `<<` `>>` `>>>` | left |
 | | `+` `-` | left |
 | | `*` `/` `%` | left |
+| | `switch` (expression) | left |
 | | `..` (range) | none |
 | | `!` `+` `-` `~` `^` `++` `--` `(T)x` (prefix) | right |
 | highest | `.` `?.` `()` `[]` `++` `--` `?` (postfix) | left |
 <!-- /GEN -->
 
 `is` binds at the same level as the relational operators.
+
+`switch` follows C#'s grammar, where the operand of a `switch` expression is a range expression: a prefix operator, a cast, a range or a postfix operator binds tighter than `switch`, and a binary operator looser. So `-n switch { ... }` is `(-n) switch { ... }`, `(int)d switch { ... }` is `((int)d) switch { ... }`, `a..b switch { ... }` is `(a..b) switch { ... }`, and `1 + n switch { ... }` is `1 + (n switch { ... })`:
+
+```nz fragment output="20 2 7 11 -10\n"
+int n = 3;
+double d = 2.9;
+int a = -n switch { 3 => 10, -3 => 20, _ => 30 };
+int b = ~n switch { 3 => 1, _ => 2 };
+int c = (int)d switch { 2 => 7, _ => 8 };
+int e = 1 + n switch { 3 => 10, _ => 0 };
+int f = -(n switch { 3 => 10, _ => 0 });
+Console.WriteLine($"{a} {b} {c} {e} {f}");
+```
 
 ## 1.4 Control Flow
 
@@ -4054,6 +4068,5 @@ void Main(string[] args) {
 - The constant graph does not read enum members: `const int K = (int)E.A;` is refused with ``E.A is not a constant``. Enum values themselves may use constants.
 - Members on enums: `E.A.ToString()` is an error. Print an enum with `{e}` in an interpolation.
 - `sizeof(nint)` and `sizeof(nuint)`: the size depends on the target, so a constant cannot hold it. `sizeof` of the other eight integer types and of an enum works.
-- A cast before a `switch`: `(int)b switch { ... }` is read as `(int)(b switch { ... })`, which is not as in C#: C# casts first, as `((int)b) switch { ... }`. Write those parentheses to cast first.
 - Unions as text and with `==`: `$"{p}"` on a union is refused (`not supported yet: a union as text`), and so is `p == q`; format or compare the case it holds after `is` or `switch`. Properties and constants in a union body, arrays and interfaces as cases, and type patterns between classes are not supported yet. Patterns: list patterns (`[a, .., z]`), C# 10's extended property patterns (`{ A.X: 0 }`), property patterns on built-in types and handles, a user `Deconstruct`, and a pattern variable used after the `if` that tests `is not` (C#'s wider scope) are not supported yet. A union is not the payload of a handle: `Shared<Pet>` and `Arc<Pet>` are refused (`` `Shared<Pet>` is not supported; wrap the value in a class ``); put the union in a field of a class and share that class.
 - `switch` patterns above the `long` range: on a `ulong` value, a literal pattern above `long.MaxValue` (`9223372036854775808`) is refused, and so is a suffixed literal pattern (`18446744073709551615UL`). A named constant works: `const ulong Big = 18446744073709551615UL;` and then `u switch { Big => ..., _ => ... }`.

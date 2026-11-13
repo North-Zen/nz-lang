@@ -174,7 +174,7 @@ Limits: no filter by test name, no time limit per test (a test that does not sto
 
 `tests/runtime_sanitized.rs` compiles those helpers with `-fsanitize=address,undefined,implicit-conversion,float-cast-overflow` and skips itself with a message when the sanitizer runtime is missing.
 
-**Not supported yet.** Combined `[Flags]` names; a constant graph that reads enum members (`const int K = (int)E.A;`); members on enums (`E.A.ToString()`; the integer types already have their constants `MinValue` and `MaxValue`, such as `byte.MaxValue`); `sizeof(nint)` and `sizeof(nuint)` (decision D9); `(int)b switch { ... }` is read as `(int)(b switch { ... })`, unlike C#, which casts first (`((int)b) switch`), so write the parentheses when the cast must come first; `switch` patterns over the `long` range (a `ulong` literal above `long.MaxValue` or a suffixed literal is rejected; a named `const ulong` constant works).
+**Not supported yet.** Combined `[Flags]` names; a constant graph that reads enum members (`const int K = (int)E.A;`); members on enums (`E.A.ToString()`; the integer types already have their constants `MinValue` and `MaxValue`, such as `byte.MaxValue`); `sizeof(nint)` and `sizeof(nuint)` (decision D9); `switch` patterns over the `long` range (a `ulong` literal above `long.MaxValue` or a suffixed literal is rejected; a named `const ulong` constant works).
 
 ## Lifted operators on optionals and `char` compound assignment (as in C#)
 
