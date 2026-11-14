@@ -1,6 +1,6 @@
 # Ownership and Borrowing
 
-This page describes what the stage 4 compiler enforces today. Every block below is checked by `cargo test`; blocks with an `output` are built and run.
+This page describes what the compiler enforces today. Every block below is checked by `cargo test`; blocks with an `output` are built and run.
 
 ## One owner
 
@@ -143,7 +143,7 @@ void Main(string[] args) {
 
 A union (README section 2.9) is `Copy` when every case is `Copy`, counted when a case holds a string and none is owned (copied freely, the copy holding its own count on the active case's strings, as a struct of strings is), and owned otherwise. An owned union is moved as a whole, like a struct that owns something: assigning it or passing it without a modifier moves it, and dropping it drops only the case it holds (through the same worklist as every other drop).
 
-A `switch` or an `is` borrows the union it tests, and a binding (`Cat c`) borrows the case (owner decision E4): it can be read and changed, and the change is seen through the union, but it cannot be moved out:
+A `switch` or an `is` borrows the union it tests, and a binding (`Cat c`) borrows the case: it can be read and changed, and the change is seen through the union, but it cannot be moved out:
 
 ```nz output="1 3\n"
 package main;
@@ -560,7 +560,7 @@ void Main(string[] args) {
 }
 ```
 
-Nothing a program can do today observes the order inside one drop: there are no destructors yet, and `Diag.LiveObjects()` and the `NZ_ALLOC_REPORT=1` report are read between statements. The order is fixed now because it becomes the order in which destructors run once they exist. Real C# has no deterministic destructor order for managed objects (a finalizer runs when the garbage collector decides, `IDisposable.Dispose` when the program calls it), so this rule is NZ's own (owner decision, 2026-11-12); it is the parent-before-members order of Rust and C++. Each field's value is read before its object is freed, so no drop reads freed memory, and nothing is freed while a borrow of it lives (the borrow rules above). The fields declared after a chain's link drop only once the rest of the chain has, so they wait while the drop runs; in a long chain the runtime keeps each object's waiting fields in one record, for a class object as large as the object and allocated as it is freed (the allocator can give back that block), for the struct payload of a `Shared<T>` or `Arc<T>` only as large as the waiting fields, so dropping a chain of one class takes about the memory the chain held (see README, "Dropping a deep structure needs only a bounded stack").
+Nothing a program can do today observes the order inside one drop: there are no destructors yet, and `Diag.LiveObjects()` and the `NZ_ALLOC_REPORT=1` report are read between statements. The order is fixed now because it becomes the order in which destructors run once they exist. Real C# has no deterministic destructor order for managed objects (a finalizer runs when the garbage collector decides, `IDisposable.Dispose` when the program calls it), so this rule is NZ's own; it is the parent-before-members order of Rust and C++. Each field's value is read before its object is freed, so no drop reads freed memory, and nothing is freed while a borrow of it lives (the borrow rules above). The fields declared after a chain's link drop only once the rest of the chain has, so they wait while the drop runs; in a long chain the runtime keeps each object's waiting fields in one record, for a class object as large as the object and allocated as it is freed (the allocator can give back that block), for the struct payload of a `Shared<T>` or `Arc<T>` only as large as the waiting fields, so dropping a chain of one class takes about the memory the chain held (see README, "Dropping a deep structure needs only a bounded stack").
 
 ## `?` leaves the function like `return`
 
@@ -643,7 +643,7 @@ void Main(string[] args) {
 
 A `string` is an immutable value that is copied freely, as in C#: assigning it, passing it by value, returning it, and storing it in a field, an element or a tuple make a copy, and every copy stays usable. A struct or tuple whose only members that hold something are strings is copied freely too. Nothing about strings is ever refused by the borrow rules.
 
-Underneath, a computed string (made by `+`, an interpolation or a library call) is one block: a reference count followed by the bytes. Every holder (a variable, a field, an element, a by-value parameter, a temporary of a statement) keeps one count, and the last one to go frees the block, at the same points where owned values are dropped. A string literal is static and is never counted or freed. `a + b + c` makes one string, with one allocation. `NZ_ALLOC_REPORT=1` prints the computed strings still alive at exit on a second line, `nz: live strings = M`, and `Diag.LiveStrings()` returns that count while the program runs. Strings reached from an `Arc<T>` payload are counted with atomic operations, so they may be released on any thread. (They are marked when the `Arc` is made, which is enough because an `Arc` payload cannot change; when a later batch adds `Mutex<T>`, every string stored into a place reachable from another thread will have to be marked at the store.)
+Underneath, a computed string (made by `+`, an interpolation or a library call) is one block: a reference count followed by the bytes. Every holder (a variable, a field, an element, a by-value parameter, a temporary of a statement) keeps one count, and the last one to go frees the block, at the same points where owned values are dropped. A string literal is static and is never counted or freed. `a + b + c` makes one string, with one allocation. `NZ_ALLOC_REPORT=1` prints the computed strings still alive at exit on a second line, `nz: live strings = M`, and `Diag.LiveStrings()` returns that count while the program runs. Strings reached from an `Arc<T>` payload are counted with atomic operations, so they may be released on any thread. (They are marked when the `Arc` is made, which is enough because an `Arc` payload cannot change; when `Mutex<T>` is added, every string stored into a place reachable from another thread will have to be marked at the store.)
 
 An `in string` (or `in string?`) parameter holds a counted copy of the argument, made when the call starts. **This differs from C#**, where `in` is a read-only reference: a callee that replaces the original through another path (a shared object, a `ref` of the same variable, a static) still sees the value the call started with. The same program in C# prints `new` twice.
 
@@ -731,7 +731,7 @@ An **owned static** (guide section 1.9) owns its value for the whole program. No
 
 Any call may replace a static, and the analysis sees one function at a time. So while a `foreach` iterates over something an owned static holds, while a pattern variable borrows from one, while an argument or receiver already holds part of one, or while an assignment or index has fixed an object inside one, a call that may run NZ code is refused or ends the borrow. A `ref` to the whole static is the exception: it is an address, read when the callee runs.
 
-**Calling an `unsafe` function needs `unsafe`** (owner decision D-STATIC-UNSAFE, answer (b)): a call of an `unsafe` function or method, or of any method of an `unsafe` type, and `new T()` when a field initializer of an `unsafe` type is not a constant expression (a call, a `new`, a write or a read of a static), are written inside `unsafe`. The rule is lexical: it is checked where the call is written and does not spread to callers.
+**Calling an `unsafe` function needs `unsafe`**: a call of an `unsafe` function or method, or of any method of an `unsafe` type, and `new T()` when a field initializer of an `unsafe` type is not a constant expression (a call, a `new`, a write or a read of a static), are written inside `unsafe`. The rule is lexical: it is checked where the call is written and does not spread to callers.
 
 **The `unsafe` block is the vouch point.** The callee of the call that lends the static is not checked across functions. When that callee assigns the static from `unsafe` code, whether it is an `unsafe` function or method receiving the static by `in`, `ref` or as its receiver (or a field inside it by `ref`), or a safe function that does the write inside an `unsafe { }` block, the caller reads freed memory. A safe function containing such a block is as dangerous to the caller that lends it the static as an `unsafe` function is. As in Rust, the vouch sits with the `unsafe` block wherever it appears: the programmer who writes it vouches that nothing lent is freed by it, as with `static mut`.
 

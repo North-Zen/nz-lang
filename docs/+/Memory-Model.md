@@ -1,6 +1,6 @@
 # Memory Model
 
-> Status: tier 1 is implemented (stage 4). Ownership, moves, `in`/`ref` borrows and deterministic drops are enforced by the compiler; see [Ownership](Ownership.md) for what it really does. Strings are reference-counted and freed with their last holder; see [Ownership: Strings](Ownership.md#strings). Tier 2 (`Shared<T>`, `Arc<T>`, `WeakReference<T>` in `std.memory`) is implemented; see [Ownership: Shared objects](Ownership.md#shared-objects). Tier 3 does not exist yet.
+> Status: tier 1 is implemented. Ownership, moves, `in`/`ref` borrows and deterministic drops are enforced by the compiler; see [Ownership](Ownership.md) for what it really does. Strings are reference-counted and freed with their last holder; see [Ownership: Strings](Ownership.md#strings). Tier 2 (`Shared<T>`, `Arc<T>`, `WeakReference<T>` in `std.memory`) is implemented; see [Ownership: Shared objects](Ownership.md#shared-objects). Tier 3 does not exist yet.
 
 NZ has no garbage collector by default, yet it stays memory safe. The approach is **two layers** on top of one shared core, so the ecosystem does not split into two coding styles.
 

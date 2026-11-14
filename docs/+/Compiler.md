@@ -8,7 +8,7 @@ The NZ compiler is made of the `nz-compiler` library in the `compiler/` folder, 
 |---|---|---|
 | 1 | Lexer and parser (C# syntax with `package`, `import`, visibility from the name) | done |
 | 2 | Semantic analysis: symbols, types, `import`, `null` and `T?` | done |
-| 3 | Code generation: C backend with `clang` (`nzc build` and `nzc run`); LLVM later. Owned objects are freed in stage 4 | done |
+| 3 | Code generation: C backend with `clang` (`nzc build` and `nzc run`); LLVM later. Owned objects are freed deterministically | done |
 | 4 | Ownership and borrow checker, deterministic release (owned objects are freed when they leave scope; strings are reference-counted and freed with their last holder) | done |
 | 5 | Core standard library and `no_runtime` mode | `no_runtime`: a first mode (`--no-runtime`, B8); the standard library not yet |
 
@@ -124,7 +124,7 @@ Limits: no filter by test name, no time limit per test (a test that does not sto
 
 ## Tuples
 
-**Types and expressions.** A tuple has two elements or more, with no upper bound. Element names are only a view over positions: `ElemNames` does not take part in comparison and `Hash`, so there is one type and one C struct. The result of `?:` uses the names of the `else` branch (a view only). Conversion between tuples is element by element through `widens_to` and only widens; how the branches of `?:` and `switch` convert (decision D9) is still open and waits for the owner.
+**Types and expressions.** A tuple has two elements or more, with no upper bound. Element names are only a view over positions: `ElemNames` does not take part in comparison and `Hash`, so there is one type and one C struct. The result of `?:` uses the names of the `else` branch (a view only). Conversion between tuples is element by element through `widens_to` and only widens; how the branches of `?:` and `switch` convert is still open.
 
 **Statement start.** A head `(int, int) f() { ... }` inside a block is a local function (a local function head: type, name, parameters, body; a tuple is a type). `[A] (int, int) t = ...;` is still the error "expected an expression", and an attribute before a local function with a tuple type gets the local function attribute message.
 
@@ -174,7 +174,7 @@ Limits: no filter by test name, no time limit per test (a test that does not sto
 
 `tests/runtime_sanitized.rs` compiles those helpers with `-fsanitize=address,undefined,implicit-conversion,float-cast-overflow` and skips itself with a message when the sanitizer runtime is missing.
 
-**Not supported yet.** Combined `[Flags]` names; a constant graph that reads enum members (`const int K = (int)E.A;`); members on enums (`E.A.ToString()`; the integer types already have their constants `MinValue` and `MaxValue`, such as `byte.MaxValue`); `sizeof(nint)` and `sizeof(nuint)` (decision D9); `switch` patterns over the `long` range (a `ulong` literal above `long.MaxValue` or a suffixed literal is rejected; a named `const ulong` constant works).
+**Not supported yet.** Combined `[Flags]` names; a constant graph that reads enum members (`const int K = (int)E.A;`); members on enums (`E.A.ToString()`; the integer types already have their constants `MinValue` and `MaxValue`, such as `byte.MaxValue`); `sizeof(nint)` and `sizeof(nuint)`; `switch` patterns over the `long` range (a `ulong` literal above `long.MaxValue` or a suffixed literal is rejected; a named `const ulong` constant works).
 
 ## Lifted operators on optionals and `char` compound assignment (as in C#)
 
@@ -188,7 +188,7 @@ The NZ code (C# style) this section describes is in `docs/README.md` section 1.1
 
 **Parser.** `Param` gains `default` (the default value expression), `is_this` and `is_params`; `Expr::Call` gains `arg_names` (one optional name per argument, in source order). `this in`/`this ref` (and `ref this`/`in this`) are written before the type.
 
-**Default values.** `sema/param_defaults.rs::resolve_defaults` evaluates defaults once signatures, constants and enums are known, in the scope of the declaring file, and stores them in `FuncSig.defaults` as `InitValue` (`Value(Constant)`, `Null`, `Zero`, and for parameters only `Real(f64)`/`Char(char)` from `sema/param_literals.rs`, owner answer R2). A local function uses `local_defaults` where it is declared.
+**Default values.** `sema/param_defaults.rs::resolve_defaults` evaluates defaults once signatures, constants and enums are known, in the scope of the declaring file, and stores them in `FuncSig.defaults` as `InitValue` (`Value(Constant)`, `Null`, `Zero`, and for parameters only `Real(f64)`/`Char(char)` from `sema/param_literals.rs`). A local function uses `local_defaults` where it is declared.
 
 **Binding arguments.** `sema/binding.rs`: `ArgSlot { Arg(i), Default }` per parameter; `sig_binding` binds positional arguments first, then named ones; `Checker::bind_args` reports why a call does not bind (the old count message stays when no name or default is involved). The checker records `call_modes[id]` **per argument, in source order** (the mode of the parameter it binds to), so the ownership analyses that zip `args` with `param_modes` stay aligned; `arg_slots[id]` is stored only when it is not the identity (`Analysis::arg_slots`). `assigned.rs::call_has_ref_param` maps an argument to its parameter through the same binding. Codegen (`codegen/expr.rs::bound_arguments`/`placed_arguments`) lowers the arguments in source order and then places them in parameter order, filling defaults; a default for an `in` parameter passed by address is stored in a temporary.
 
@@ -220,7 +220,7 @@ The NZ code (C# style) this section describes is in `docs/README.md` section 1.1
 
 | File | Content |
 |---|---|
-| `parser/pointers.rs`, `parser/scan.rs` | pointer types (`T*`, `void*`), `&`, `*p`, `p->F`, `stackalloc`, `fixed`; `Name * name;` is always a declaration (owner decision M3), `delegate*` is read as a type so it can be refused |
+| `parser/pointers.rs`, `parser/scan.rs` | pointer types (`T*`, `void*`), `&`, `*p`, `p->F`, `stackalloc`, `fixed`; `Name * name;` is always a declaration, `delegate*` is read as a type so it can be refused |
 | `sema/pointers.rs`, `sema/pointer_ops.rs`, `sema/address.rs` | where pointers may appear (`guard_pointer_value` catches a pointer value in safe code), the operators and casts, `sizeof`, `stackalloc` (constant length, the CA2014-style warning in a loop), the `&` rules and `refuse_packed_field` (`&`, `fixed`, `ref`/`in` arguments, `this ref` and method receivers) |
 | `sema/ownership/fixed.rs` | the freeze of a `fixed` root |
 | `sema/layout.rs` | `[StructLayout]`: offsets, size and alignment for the 64-bit targets, `Pack`, the `char` and unmanaged-field rules |

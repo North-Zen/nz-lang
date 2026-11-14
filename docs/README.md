@@ -10,7 +10,7 @@
 
 NZ is designed for many kinds of programs: kernels (`no_runtime`), web/app servers, and games.
 
-> ⚠️ Status: NZ programs now **compile to C and run** through `clang` (`nzc run`), after passing the lexer, parser and semantic analysis. **Ownership and borrow checking are active** (stage 4): owned objects are freed deterministically, and strings are freed with their last holder (see [Ownership](+/Ownership.md) and [Compiler](+/Compiler.md)).
+> ⚠️ Status: NZ programs now **compile to C and run** through `clang` (`nzc run`), after passing the lexer, parser and semantic analysis. **Ownership and borrow checking are active**: owned objects are freed deterministically, and strings are freed with their last holder (see [Ownership](+/Ownership.md) and [Compiler](+/Compiler.md)).
 
 ## Installation, Running Hello World
 
@@ -1327,7 +1327,7 @@ Importing a package of the standard library takes no part in a cycle.
 
 `nzc check`, `nzc build` and `nzc run` take a `.nz` file or a folder.
 
-- **A folder** is the entry package, and it needs a `Main`: `void Main()`, `void Main(string[] args)`, `int Main()` or `int Main(string[] args)`, as in C# (an `int` result is the exit status). A folder without `Main`, such as a library, fails with `no entry point`, for `check` as well. `nzc build app` writes the executable into the package's `bin` folder, named after the package folder: `app/bin/app` (`app\bin\app.exe` on Windows), wherever you build from, like `dotnet build`. The `bin` folder is created when missing. `-o` names another executable instead. An error in the program is reported before any problem with the output path; if a folder already has the executable's name, the build stops with ``cannot write the executable `app/bin/app`: a folder of that name exists; use -o``. A single file, `nzc build hello.nz`, still leaves `hello` in the current folder.
+- **A folder** is the entry package, and it needs a `Main`: `void Main()`, `void Main(string[] args)`, `int Main()` or `int Main(string[] args)`, as in C# (an `int` result is the exit status; any other return type, such as a `Result`, is refused). A folder without `Main`, such as a library, fails with `no entry point`, for `check` as well. `nzc build app` writes the executable into the package's `bin` folder, named after the package folder: `app/bin/app` (`app\bin\app.exe` on Windows), wherever you build from, like `dotnet build`. The `bin` folder is created when missing. `-o` names another executable instead. An error in the program is reported before any problem with the output path; if a folder already has the executable's name, the build stops with ``cannot write the executable `app/bin/app`: a folder of that name exists; use -o``. A single file, `nzc build hello.nz`, still leaves `hello` in the current folder.
 - **A file** is the entry package on its own. Its `package` line is its name, and no folder name check is made. No other file of its folder is read, unless the program imports the file's own package (`package app;` in `app/main.nz` with `import app.Helper;`): then every other `.nz` file of that folder is read as part of the package, so a broken file there fails the build.
 
 Imported packages are found from a **source root**. By default it is the folder above the entry folder: `import geo.Point;` loads the folder `geo` next to `app`, and `import a.b.C;` loads `<root>/a/b/`. When the `package` line of the entry package is dotted and the folder path ends with that name (the folder `src/app/cli` with `package app.cli;`), the source root is the path before the name (`src`), the package is `app.cli`, and no warning is given. For a file, the same rule is applied to the folder that holds it. There is no option to set the root.
@@ -1335,6 +1335,8 @@ Imported packages are found from a **source root**. By default it is the folder 
 A package that cannot be found (``package `geo` not found: no folder `<root>/geo` ``, where the message shows the whole path) or a folder with no `.nz` files is an error at the import that asked for it.
 
 ## 1.7 Errors: Abort and Assert
+
+The complete guide to errors, with every runtime stop, the `Try` members, the comparison with C# and what is planned, is [Error Handling](+/Error-Handling.md). This section is the short form.
 
 `Abort` and `Assert` are built-in functions. They need no `import`.
 
@@ -1349,7 +1351,7 @@ if (n > 100) {
 }
 ```
 
-Stopping means: standard output is flushed, `nz: <message>` (for `Assert`, `nz: assertion failed: <message>`) and a newline go to standard error, and the exit code is 1. No cleanup runs: owned values are not dropped, `defer` statements do not run, and the `NZ_ALLOC_REPORT=1` live-object report is not printed. This is the same as the other runtime stops (index out of range, unwrapping `null`, overflow).
+Stopping means: standard output is flushed, `nz: <message>` (for `Assert`, `nz: assertion failed: <message>`) and a newline go to standard error, and the exit code is 1. No cleanup runs: owned values are not dropped, `defer` statements do not run, and the `NZ_ALLOC_REPORT=1` live-object report is not printed. This is the same as the other runtime stops (index out of range, overflow, `.Value` of a null optional).
 
 The message of `Assert` is evaluated only when the condition is false, so it can be costly to build. Since `Abort` never returns, a function that returns a value may end with `Abort(...);` and no `return`. Both are calls with no value, so `var x = Abort("m");` is an error. A method named `Abort` or `Assert` hides the built-in for calls by that bare name inside its class. A local variable with that name makes the call an error (`` `Abort` is a variable, not a function ``), and a top-level function with that name is an error (`` `Abort` is a built-in function and cannot be declared ``).
 
@@ -1378,7 +1380,7 @@ void Main(string[] args) {
 }
 ```
 
-The workaround is `return`: with `return;` in place of `Abort(s);` the program is accepted. In the same way, a move inside an `Assert` message counts after the `Assert`, even though the message runs only when the assertion fails: after `Assert(c, Eat(n));`, using `n` is an error. A later batch will make `Abort` end a path for every flow analysis.
+The workaround is `return`: with `return;` in place of `Abort(s);` the program is accepted. In the same way, a move inside an `Assert` message counts after the `Assert`, even though the message runs only when the assertion fails: after `Assert(c, Eat(n));`, using `n` is an error. `Abort` does not yet end a path for these three analyses.
 
 ### `Result`
 
@@ -1537,10 +1539,10 @@ void Main(string[] args) {
 The rules:
 
 - `?` may stand anywhere in a function body where an expression can: in an argument, a condition, an arm of `?:`, `??`, `&&`, `||` or `switch`, a `when` guard, an interpolation hole, a loop header. It leaves the function exactly as `return` would (see [Ownership: `?` leaves the function like `return`](+/Ownership.md#-leaves-the-function-like-return)). Inside a local function it leaves that local function.
-- On a `Result<T, E>` the function must return a `Result` whose error type is exactly `E` (no conversion); the success types may differ. On a `T?` the function must return an optional type (any `U?`). A `Result` operand in a function returning an optional, or the other way round, is an error. `Main` returns `void` or `int`, so `?` cannot stand in `Main`.
+- On a `Result<T, E>` the function must return a `Result` whose error type is exactly `E` (no conversion); the success types may differ. On a `T?` the function must return an optional type (any `U?`). A `Result` operand in a function returning an optional, or the other way round, is an error. `Main` returns `void` or `int`, so `?` cannot stand in `Main`, and a `Main` that returns a `Result` is refused (``entry point `Main` must be `void Main()`, ...``).
 - `?` cannot stand inside `defer`, nor in a field, constant or static initializer.
 - The operand is evaluated once, where it stands, and is consumed: a variable that holds an owned `Result` is moved, and a field or a list element that owns something cannot be the operand (copy a `Result` of copyable values freely).
-- `x?` does not make `x` non-null afterwards (a later batch may add that).
+- `x?` does not make `x` non-null afterwards.
 - `?` may also be a statement on its own: `Check()?;` evaluates the call, leaves the function with the error exactly as `var x = Check()?;` would, and discards the success value (an owned value, such as a string, a list or a class instance, is released at the end of the statement). Only a `?` can be a statement this way: `Check();` keeps its `Result` as a discarded value and `x + 1;` or `x;` is still an error, as in C#.
 
 **Reading `?` next to the conditional operator.** After an expression, a `?` followed by a token that can start an expression is the conditional operator `c ? a : b`, as in C#; otherwise it passes an error on. So `f()? - 1` is a conditional (and an error without its `:`); write `(f()?) - 1` to pass the error on and then subtract. The same holds for `+`, `-`, `*`, `&`, `!`, `~`, `(`, `[`, `^` and `..` after the `?`. `?.`, `?[` and `??` are operators of their own, so `f()?.x` is a null-conditional member access and `f()? ?? 0` passes the error on, then coalesces. In an interpolation hole with a format, put the operator in parentheses: `$"{(f()?):D2}"`.
@@ -1934,7 +1936,7 @@ void Main(string[] args) {
 }
 ```
 
-C# 7.2 and later also accept a named argument in its own position followed by positional ones (`Sub(a: 1, 2)`); NZ refuses that too for now, by a design decision: every positional argument comes before the first named one.
+C# 7.2 and later also accept a named argument in its own position followed by positional ones (`Sub(a: 1, 2)`); NZ refuses that too for now, for now: every positional argument comes before the first named one.
 
 Named arguments on built-in members (`Console.WriteLine(value: x)`, `List.Add`), on `Abort` and `Assert`, and on `new` are not supported yet.
 
@@ -3139,7 +3141,7 @@ void Main(string[] args) {
 
 **Cases.** A case is any type that is not optional: a built-in type, a class, struct, enum, tuple, another union, or a generic instance (`union Maybe<T>(Some<T>, None);`). A union needs at least two cases, two cases may not be the same type (or become the same type for some type arguments, as `Box<T>` and `Box<int>` can), and a union is not a case of itself. A bare type parameter (`union U<T>(T, Dog)`) is not a case, because it could be the same type as another case. Arrays and interfaces as cases are not supported yet. A union has no fields of its own: the data lives in its case types.
 
-**Conversion.** A value of a case type converts to the union implicitly, as above, and an explicit cast `(Pet)new Dog()` works as in C#. When the value's type is not itself a case, the case it converts to is chosen; when it converts to more than one case, NZ refuses where C# 15 would pick the better one, and asks for a cast to the case that is meant (owner decision E1):
+**Conversion.** A value of a case type converts to the union implicitly, as above, and an explicit cast `(Pet)new Dog()` works as in C#. When the value's type is not itself a case, the case it converts to is chosen; when it converts to more than one case, NZ refuses where C# 15 would pick the better one, and asks for a cast to the case that is meant:
 
 ```nz error="converts to more than one case"
 package main;
@@ -3188,7 +3190,7 @@ Properties and constants in a union body are not supported yet. A union has no t
 
 ## 2.10 Patterns and the `switch` statement
 
-**Type patterns.** On a union, a `switch` arm or an `is` test names a case: `Cat c` binds the case to a new name, `Cat` alone only tests it, and `_` takes anything else. A binding borrows the case: it can be read and changed, not moved out (owner decision E4). A type that is not a case of the union is an error (`` `Fish` is not a case of `Pet` ``). The union itself is a type test of the value, as in C#: on a `Pet?`, `o is Pet p` tests for null and binds the union (`n.Left is Tree l` in a recursive union), and on a `Pet` it always matches. On any other type, a type pattern is the tested type itself (`int i` on an `int?` tests for null); a type pattern between classes waits for inheritance.
+**Type patterns.** On a union, a `switch` arm or an `is` test names a case: `Cat c` binds the case to a new name, `Cat` alone only tests it, and `_` takes anything else. A binding borrows the case: it can be read and changed, not moved out. A type that is not a case of the union is an error (`` `Fish` is not a case of `Pet` ``). The union itself is a type test of the value, as in C#: on a `Pet?`, `o is Pet p` tests for null and binds the union (`n.Left is Tree l` in a recursive union), and on a `Pet` it always matches. On any other type, a type pattern is the tested type itself (`int i` on an `int?` tests for null); a type pattern between classes waits for inheritance.
 
 **Constant, relational and logical patterns** (C# 9). A constant (`0`, `'a'`, `"hi"`, `null`, a named constant or an enum member) matches an equal value; `< c`, `<= c`, `> c` and `>= c` compare numbers, `char`s and enum values with a constant; `not`, `and` and `or` combine patterns, in that order of precedence, and parentheses group them. `is` takes every pattern, and `x is not null` proves `x` is not null where it holds:
 
@@ -3221,7 +3223,7 @@ void Main(string[] args) {
 
 A `switch` on an optional is allowed: `null` matches the missing value, and every other pattern except `var`, `_` and `not ...` needs a value. As in C#, a constant pattern on an `int?` tests the value, and an `int` constant matches a `double`.
 
-**Property, positional and `var` patterns** (C# 8). `{ X: 0, Y: > 1 }` matches a value whose fields match; `Point { X: 0 }` also tests the type (on a union, the case; on an optional, not null), and `{ }` matches any value that is not null. `(p, q)` matches a tuple element by element, and `Pair(p, q)` a positional `record struct` by its parameters (owner decision E9: tuples and positional records, no user `Deconstruct`). `var x` matches every value, `null` included, and binds it; a name after a property or positional pattern binds the matched value (`{ X: > 0 } p`). A variable under `or` or `not` is an error, as in C#.
+**Property, positional and `var` patterns** (C# 8). `{ X: 0, Y: > 1 }` matches a value whose fields match; `Point { X: 0 }` also tests the type (on a union, the case; on an optional, not null), and `{ }` matches any value that is not null. `(p, q)` matches a tuple element by element, and `Pair(p, q)` a positional `record struct` by its parameters (tuples and positional records, no user `Deconstruct`). `var x` matches every value, `null` included, and binds it; a name after a property or positional pattern binds the matched value (`{ X: > 0 } p`). A variable under `or` or `not` is an error, as in C#.
 
 ```nz output="origin y-axis 3 far\n1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz \nbig 5 bad\n"
 package main;
@@ -3264,7 +3266,7 @@ void Main(string[] args) {
 }
 ```
 
-Property patterns read fields (owner decision D5: computed properties come with properties, B2c); the members of built-in types (`Count`, `Length`) and the objects behind `Shared` and `Arc` handles are not supported yet. C# 10's extended form `{ A.X: 0 }` is not supported yet: write `{ A: { X: 0 } }`.
+Property patterns read fields (computed properties come with properties); the members of built-in types (`Count`, `Length`) and the objects behind `Shared` and `Arc` handles are not supported yet. C# 10's extended form `{ A.X: 0 }` is not supported yet: write `{ A: { X: 0 } }`.
 
 **Guards** (C# 7). `when` after a pattern adds a condition, which can read the pattern's variables. It runs only when the pattern matched, once, in arm order; when it is false, matching goes on with the next arm. It works on `case` labels too. A guard cannot move, replace or change the value its `switch` tests, nor the list or object that holds it (the later arms still test it), even when only `_` follows; lend the value with `in` instead. The parts inside the tested value and the object behind a `Shared` handle are not held: a guard may change them, and the later arms then see the change, as in C#:
 
@@ -3303,7 +3305,7 @@ void Main(string[] args) {
 }
 ```
 
-**Exhaustiveness.** As in C#, a `switch` expression that does not cover every value is a warning (C#'s CS8509), and at run time a value that no arm matches stops the program with `nz: SwitchExpressionException: Non-exhaustive switch expression failed to match its input.` (owner decision E3):
+**Exhaustiveness.** As in C#, a `switch` expression that does not cover every value is a warning (C#'s CS8509), and at run time a value that no arm matches stops the program with `nz: SwitchExpressionException: Non-exhaustive switch expression failed to match its input.`:
 
 ```nz warning="`Dog` not handled"
 package main;
@@ -3355,11 +3357,11 @@ void Main(string[] args) {
 }
 ```
 
-A guarded arm covers nothing. A `string` or floating-point constant takes nothing away either, so such a `switch` needs `_` even where C# could prove more. The check stops after 100,000 steps of work (owner decision E10): a `switch` that ends with `_` or `var x` is then accepted, only the reachability of its earlier arms left unchecked; one that does not is an error that asks for `_`.
+A guarded arm covers nothing. A `string` or floating-point constant takes nothing away either, so such a `switch` needs `_` even where C# could prove more. The check stops after 100,000 steps of work: a `switch` that ends with `_` or `var x` is then accepted, only the reachability of its earlier arms left unchecked; one that does not is an error that asks for `_`.
 
 An arm that an earlier arm already covers is an error, as in C#: after `Cat => 4, Dog => 4` on a `Pet`, `_ => 0` is ``pattern `_` is already handled by an earlier arm``, and after `< 10`, the arm `< 5` is too. As in C#, a `_` after `{ }` on a class is allowed (C# counts `null` there).
 
-**The `switch` statement** has C#'s form (owner decision E6): sections that start with one or more `case` labels or `default`, and end with `break`, `return`, `continue` or another way out. Control cannot fall from one section into the next; several labels can share one section:
+**The `switch` statement** has C#'s form: sections that start with one or more `case` labels or `default`, and end with `break`, `return`, `continue` or another way out. Control cannot fall from one section into the next; several labels can share one section:
 
 ```nz output="none few many\n"
 package main;
@@ -3386,7 +3388,7 @@ void Main(string[] args) {
 
 The labels take the patterns of the `switch` expression (`case Ok<int> ok:`), and the sections share one declaration space, as in C#. A statement that does not cover every value is no warning: nothing runs when no label matches. `goto case`, a pattern variable in a section with more than one label, and a variable declared in one section and used in another are not supported yet.
 
-**Temporaries.** A value made on the spot that a `switch` or an `is` tests lives until the end of the statement that holds it (owner decision E5), so a binding into it is valid for the whole statement; for an `if`, that is both branches.
+**Temporaries.** A value made on the spot that a `switch` or an `is` tests lives until the end of the statement that holds it, so a binding into it is valid for the whole statement; for an `if`, that is both branches.
 
 ## 2.11 Arrays and collection expressions
 
@@ -3470,7 +3472,7 @@ void Main(string[] args) {
 }
 ```
 
-`^0` is one past the end, so `a[^0]` stops the program with `index out of range`; a negative value after `^` stops with .NET's `ArgumentOutOfRangeException`, and so does a range outside the string. A range binds tighter than `+` and `-` (as in C#): `1..n-1` is `(1..n) - 1`, an error; write `1..(n - 1)`. A `List<T>` cannot be sliced (C# has no `List<T>` slice), and slicing an array is not supported yet: whether it gives a new array (C#) or a borrowed view is an open question for the owner.
+`^0` is one past the end, so `a[^0]` stops the program with `index out of range`; a negative value after `^` stops with .NET's `ArgumentOutOfRangeException`, and so does a range outside the string. A range binds tighter than `+` and `-` (as in C#): `1..n-1` is `(1..n) - 1`, an error; write `1..(n - 1)`. A `List<T>` cannot be sliced (C# has no `List<T>` slice), and slicing an array is not supported yet: whether it gives a new array (C#) or a borrowed view is not decided yet.
 
 ### Spans
 
@@ -3510,7 +3512,7 @@ void Main(string[] args) {
 }
 ```
 
-A span lives only as long as the call it is passed to (owner decision D-B2d-1 (A)): it cannot be stored in a local variable, a field, a static, an array or a list, returned, or used as a type argument; this is stricter than C#, which allows span locals. Real C# lets a function write the elements of an `in Span<T>`; in NZ `in` is read-only, as for every `in` parameter. `ReadOnlySpan<T>` is not supported yet. How a span borrows its source is in [Ownership](+/Ownership.md#spans-borrow-for-one-call).
+A span lives only as long as the call it is passed to: it cannot be stored in a local variable, a field, a static, an array or a list, returned, or used as a type argument; this is stricter than C#, which allows span locals. Real C# lets a function write the elements of an `in Span<T>`; in NZ `in` is read-only, as for every `in` parameter. `ReadOnlySpan<T>` is not supported yet. How a span borrows its source is in [Ownership](+/Ownership.md#spans-borrow-for-one-call).
 
 ### `params`
 

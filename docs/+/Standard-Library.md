@@ -31,12 +31,13 @@ nz: ArgumentOutOfRangeException: Index was out of range. Must be non-negative an
 
 - the indexer of an array or a list (`xs[9]`, `list[9]`): `nz: index out of range` (.NET: `IndexOutOfRangeException`, `ArgumentOutOfRangeException`);
 - a string position inside a multi-byte character: `nz: ArgumentOutOfRangeException: Index is inside a UTF-8 sequence. (Parameter 'startIndex')` (or the member's own parameter);
+- the indexer of a string (`s[9]`) keeps .NET's name and text: `nz: IndexOutOfRangeException: Index was outside the bounds of the array.`;
 - a culture `StringComparison` value (`CurrentCulture`, `InvariantCulture`, ...), which NZ does not support;
 - `File.ReadAllText`/`ReadAllLines` of a file with a UTF-16 or UTF-32 byte order mark: `nz: NotSupportedException: The file '...' starts with a UTF-16 or UTF-32 byte order mark; File.ReadAllText reads UTF-8 only.`
 
-Messages name full paths, as .NET's do. A program avoids the stop by checking first, as C# code often does: `File.Exists(path)`, `d.ContainsKey(k)`, `int.TryParse(s)`. The `File` and `Directory` members that a command-line tool needs also have `Try` twins that return a `Result` instead of stopping (next section).
+Messages name full paths, as .NET's do: a relative path in the program shows as the full path from the working directory, so a documented example that prints such a message uses an absolute path. A program avoids the stop by checking first, as C# code often does: `File.Exists(path)`, `d.ContainsKey(k)`, `int.TryParse(s)`. The `File` and `Directory` members that a command-line tool needs also have `Try` twins that return a `Result` instead of stopping (next section).
 
-C#'s `TryX(..., out T value)` members return the value as an optional instead: `int? n = int.TryParse(s);`, `int? v = d.TryGetValue(k);` (decision S2). The compiler makes you check the optional before you use it.
+C#'s `TryX(..., out T value)` members return the value as an optional instead: `int? n = int.TryParse(s);`, `int? v = d.TryGetValue(k);`. The compiler makes you check the optional before you use it.
 
 ## Members that return a result: `Try` twins
 
@@ -55,7 +56,7 @@ Real C# has no such members: .NET throws `FileNotFoundException` and C# code cat
 | `Directory.TryGetFiles(path)`, `(path, searchPattern)` | `Result<string[], IOError>` | `Directory.GetFiles` |
 | `Directory.TryDelete(path)`, `(path, recursive)` | `Result<bool, IOError>` | `Directory.Delete` |
 
-A member that returns nothing in .NET returns `Result<bool, IOError>` whose `Ok` value is always `true` (there is nothing else to report; use `?` or a `switch` on the `Err`). The result owns its string, array or message like any other result (see "Who owns a result"), and an unused result is dropped at the end of its statement.
+As in .NET, deleting a file that is not there is not an error: `File.TryDelete` of a missing file is an `Ok`. A member that returns nothing in .NET returns `Result<bool, IOError>` whose `Ok` value is always `true` (there is nothing else to report; use `?` or a `switch` on the `Err`). The result owns its string, array or message like any other result (see "Who owns a result"), and an unused result is dropped at the end of its statement.
 
 `IOError` is a small struct with two fields; both `IOError` and `IOErrorKind` are visible in every file without an import:
 
@@ -189,7 +190,7 @@ A recursive delete keeps one open folder handle per level of the tree on Linux a
 
 ## Windows paths not yet proven by CI
 
-The Windows code is written and reviewed but has not run yet: Windows CI is blocked. Until it runs, these are the open points (final review, W1-W12):
+The Windows code is written and reviewed but has not run yet: Windows CI is blocked. Until it runs, these are the open points (W1-W12):
 
 | # | What | To prove on Windows |
 |---|---|---|
