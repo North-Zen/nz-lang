@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/nz-banner.svg" alt="NZ" width="650">
+  <img src="assets/nz-logo-filled.svg" alt="NZ" width="650">
 </p>
 
 # NZ

@@ -1,6 +1,6 @@
 # NZ Programming Language
 
-![](../assets/nz-banner.svg)
+![](../assets/nz-logo-filled.svg)
 
 > This document is **alive**: every `nz` code block is checked by the real compiler during `cargo test`, and the sections marked `GEN` are rewritten from the compiler's own code with `nzc docs`. The details are in [Compiler](+/Compiler.md).
 
