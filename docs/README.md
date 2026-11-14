@@ -1355,7 +1355,7 @@ Stopping means: standard output is flushed, `nz: <message>` (for `Assert`, `nz: 
 
 The message of `Assert` is evaluated only when the condition is false, so it can be costly to build. Since `Abort` never returns, a function that returns a value may end with `Abort(...);` and no `return`. Both are calls with no value, so `var x = Abort("m");` is an error. A method named `Abort` or `Assert` hides the built-in for calls by that bare name inside its class. A local variable with that name makes the call an error (`` `Abort` is a variable, not a function ``), and a top-level function with that name is an error (`` `Abort` is a built-in function and cannot be declared ``).
 
-**Current limits.** For the check that every path returns a value, `Abort` ends the path. For the other three flow analyses (definite assignment, null narrowing, and move analysis) it does not: the compiler treats the code after an `Abort` as reachable. Valid guard code can be rejected because of this. Here the path that moves `n` stops at `Abort`, yet the last line is an error:
+**Current limits.** For the check that every path returns a value, `Abort` ends the path. For the other flow analyses it does not, except null narrowing: definite assignment and move analysis treat the code after an `Abort` as reachable (after `if (x == null) { Abort("x"); }`, `x` is not null). Valid guard code can be rejected because of this. Here the path that moves `n` stops at `Abort`, yet the last line is an error:
 
 ```nz error="may have been moved"
 package main;
@@ -3179,6 +3179,30 @@ void Main(string[] args) {
 - A plain `readonly` field (not `static`) is assigned only by its initial value and the constructors of its type (see [Object initializers](#object-initializers)).
 - Static members of generic types, static properties, and static members of interfaces are not supported yet.
 
+### Static classes
+
+`static class` (C#) is a class whose members are all static: it groups functions and constants and has no instances. An instance field, property, method, indexer, constructor or operator in it is an error, and so is using it as a type (a variable, parameter, return value, field, array element or type argument) or writing `new` on it, as in C#. Call its members as `Type.Name`:
+
+```nz output="True\nFalse\n8\n"
+package main;
+
+import std.io.Console;
+
+static class Chars {
+    public const int Base = 4;
+    public static bool IsDigit(char c) { return c >= '0' && c <= '9'; }
+    public static int Twice(int x) => x * 2;
+}
+
+void Main(string[] args) {
+    Console.WriteLine(Chars.IsDigit('5'));
+    Console.WriteLine(Chars.IsDigit('x'));
+    Console.WriteLine(Chars.Twice(Chars.Base));
+}
+```
+
+An extension method (`this` on the first parameter) is still declared as a top-level function, not inside a static class; the compiler says so. A static class cannot be a base class or derive from one (inheritance is not supported yet).
+
 ## 2.8 Type aliases
 
 `type Name = Type;` gives a type another name. An alias is transparent: it is expanded wherever a type is written, and messages show the type it stands for. An alias can have type parameters, and an alias of an enum or class works as `Alias.Member`.
@@ -3897,6 +3921,8 @@ import std.collections.Dictionary;
 | `ContainsKey` | `bool ContainsKey(TKey)` | Whether the key is present. |
 | `TryGetValue` | `TValue? TryGetValue(TKey)` | A copy of the key's value, or null when the key is missing (C#'s `out` value is the result); only for values that are copied. |
 | `GetValueOrDefault` | `TValue GetValueOrDefault(TKey)`<br>`TValue GetValueOrDefault(TKey, TValue)` | A copy of the key's value, or `defaultValue`, or the zero value (`0`, `false`, null); only for values that are copied, and the one-argument form not for `string` values (.NET gives null). |
+| `Keys` | `List<TKey> Keys { get; }` | The keys in insertion order, as a new list of copies (a snapshot: later changes of the dictionary do not reach it). |
+| `Values` | `List<TValue> Values { get; }` | The values in insertion order, as a new list of copies (a snapshot); only for values that are copied. |
 | `Count` | `int Count { get; }` | The number of pairs. |
 | indexer | `this[TKey] -> TValue` | Reads or writes the element (of a dictionary: the value of the key). |
 
@@ -3927,6 +3953,44 @@ import std.collections.HashSet;
 | `Remove` | `bool Remove(T)` | Removes the element; `false` when it is not present. |
 | `Contains` | `bool Contains(T)` | Whether the element is present. |
 | `Clear` | `void Clear()` | Removes every element. |
+| `Count` | `int Count { get; }` | The number of elements. |
+
+#### `Stack<T>`
+
+A last-in, first-out collection that owns its elements.
+
+```nz-api
+import std.collections.Stack;
+```
+
+| Member | Signature | Description |
+|---|---|---|
+| constructor | `new Stack<T>()`<br>`new Stack<T>(int capacity)` | An empty stack, or an empty one with room for `capacity` elements (a negative capacity stops). |
+| `Push` | `void Push(T)` | Puts the element on top; the stack owns it from then on. |
+| `Pop` | `T Pop()` | Removes the top element and gives it to the caller; an empty stack stops (`InvalidOperationException`: Stack empty.). |
+| `Peek` | `T Peek()` | A copy of the top element (elements that are copied only); an empty stack stops. |
+| `TryPop` | `T? TryPop()` | Removes the top element and gives it to the caller, or null when the stack is empty (C#'s `out` value is the result). |
+| `TryPeek` | `T? TryPeek()` | A copy of the top element, or null when the stack is empty (elements that are copied only). |
+| `Clear` | `void Clear()` | Removes and drops every element. |
+| `Count` | `int Count { get; }` | The number of elements. |
+
+#### `Queue<T>`
+
+A first-in, first-out collection that owns its elements.
+
+```nz-api
+import std.collections.Queue;
+```
+
+| Member | Signature | Description |
+|---|---|---|
+| constructor | `new Queue<T>()`<br>`new Queue<T>(int capacity)` | An empty queue, or an empty one with room for `capacity` elements (a negative capacity stops). |
+| `Enqueue` | `void Enqueue(T)` | Adds the element at the end; the queue owns it from then on. |
+| `Dequeue` | `T Dequeue()` | Removes the first element and gives it to the caller; an empty queue stops (`InvalidOperationException`: Queue empty.). |
+| `Peek` | `T Peek()` | A copy of the first element (elements that are copied only); an empty queue stops. |
+| `TryDequeue` | `T? TryDequeue()` | Removes the first element and gives it to the caller, or null when the queue is empty (C#'s `out` value is the result). |
+| `TryPeek` | `T? TryPeek()` | A copy of the first element, or null when the queue is empty (elements that are copied only). |
+| `Clear` | `void Clear()` | Removes and drops every element. |
 | `Count` | `int Count { get; }` | The number of elements. |
 
 ### Package `std.diag`

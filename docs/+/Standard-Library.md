@@ -10,7 +10,7 @@ A .NET namespace becomes a package: `System` is `std`, `System.IO` is `std.io`, 
 |---|---|
 | `std` | `Environment`, `Math`, `BitConverter`, `StringComparison`, `StringSplitOptions` |
 | `std.io` | `Console`, `File`, `Path`, `Directory` |
-| `std.collections` | `List<T>`, `Dictionary<TKey,TValue>`, `KeyValuePair<TKey,TValue>`, `HashSet<T>` |
+| `std.collections` | `List<T>`, `Dictionary<TKey,TValue>`, `KeyValuePair<TKey,TValue>`, `HashSet<T>`, `Stack<T>`, `Queue<T>` |
 | `std.text` | `StringBuilder`, `Encoding` |
 | `std.buffers.binary` | `BinaryPrimitives` |
 | `std.diag`, `std.memory` | `Diag`; `Shared<T>`, `Arc<T>`, `WeakReference<T>` |
@@ -206,3 +206,10 @@ The Windows code is written and reviewed but has not run yet: Windows CI is bloc
 | W10 | pattern matching ignores ASCII case only | the pattern fixture against .NET on Windows |
 | W11 | exact output comparisons with `\r\n` line ends | `example_pe_info_reads_fixture` on Windows |
 | W12 | no `-D_POSIX_C_SOURCE` off Linux | Windows and macOS builds compile `nz.h` without errors |
+
+## Split, Format, Keys and Values, Stack and Queue
+
+- **`Split`** takes a separator `char`, a `string`, a `char[]` or a `string[]` (with an optional `StringSplitOptions`), or nothing. A `char[]` or `string[]` splits at any of its elements (the first element of a `string[]` that matches at a position wins, as in .NET; empty strings never match), and no separator or an empty array splits at white space. `Split(params char[])` has no `params` here: pass an array (`s.Split(new char[] { ',', ';' })`).
+- **`string.Format(format, args...)`** works as in .NET for a constant format string (a literal or a `const`): `{index}`, `{index,alignment}`, `{index:format}`, `{{` and `}}`. A format is `F`, `D`, `X` or `x` with an optional precision, the formats an interpolation takes (`N`, `C`, `P`, `E`, `G` and custom formats are not supported yet); an alignment pads with spaces to a width in bytes, right-aligned when positive (.NET counts UTF-16 units: `{0,3}` of `"é"` pads with one space here and two there). Every argument is evaluated once, in order. As in .NET an index or a width of 1,000,000 or more is refused. A malformed format string is a compile-time error carrying .NET's `FormatException` message (`Input string was not in a correct format.`, or `Index (zero based) must be greater than or equal to zero and less than the size of the argument list.`); a format string that is not a constant is refused, since NZ has no `object[]` to carry the arguments: use an interpolation `$"..."`.
+- **`Dictionary.Keys` and `Dictionary.Values`** give a new `List` with a copy of each key or value, in insertion order: enumerate it with `foreach`, ask its `Count`, index it. It is a snapshot (.NET's are live views of the dictionary), so changing the dictionary afterwards does not change it, and the dictionary can change while a `foreach` walks the snapshot. `Values` needs values that are copied (as `TryGetValue` does); for owned values walk the pairs, `foreach (var kv in d)`, and read `kv.Value`.
+- **`Stack<T>`** (`Push`, `Pop`, `Peek`, `TryPop`, `TryPeek`, `Count`, `Clear`) and **`Queue<T>`** (`Enqueue`, `Dequeue`, `Peek`, `TryDequeue`, `TryPeek`, `Count`, `Clear`) own their elements as a list does: `Push` and `Enqueue` move the element in, `Pop` and `Dequeue` hand it to the caller, and dropping the collection drops the rest. `Pop`, `Peek`, `Dequeue` on an empty collection stop with `InvalidOperationException: Stack empty.` or `Queue empty.`; the `Try` members give `T?` (C#'s `out` value is the result). `Peek` and `TryPeek` copy, so they need elements that are copied (use `Pop`/`Dequeue` for owned ones). `Dequeue` is O(1). They have no indexer and cannot be walked with `foreach` yet.

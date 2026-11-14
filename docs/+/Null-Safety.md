@@ -31,8 +31,81 @@ The compiler tracks, syntactically, the local variables and parameters (except `
 | `x != null ? ... : ...` | the first arm of the ternary |
 | `while (x != null)` | the loop body |
 | `x ??= v;` as a single statement inside a block | the rest of that block, for local variables only |
+| `x = value;` as a single statement inside a block, `value` not optional | the rest of that block, for local variables only |
+| `if (x == null) { return; }` (any test that fails to hold on the path that continues) | the statements after the `if`, in the same block; never past the end of a loop body or of a `defer`red statement, braced or not |
+| `while (x == null) { ... }`, `for`, `do ... while` with no `break` | the statements after the loop, in the same block |
 
-`?.`, `?[` and `??` are always allowed on an optional value.
+`?.`, `?[` and `??` are always allowed on an optional value, also on a variable that is narrowed, and so are `== null`, `is null` and `is not null` (a narrowed variable is tested as the optional it was declared). `x ?? y` on a narrowed variable is `x` (an owned `x` is moved, as any use of it moves it, and `y` never runs).
+
+### Early exits and joins
+
+As in C#, a test that ends in an exit narrows the code after it. `return`, `break`, `continue` and `Abort(...)` leave the path, so only the path where the test failed goes on:
+
+```nz output="3\nnone\n"
+package main;
+
+import std.io.Console;
+
+double? Find(int k) { if (k > 0) { return k * 1.5; } return null; }
+
+string Show(int k) {
+    var v = Find(k);
+    if (v == null) { return "none"; }
+    return $"{v}";
+}
+
+void Main(string[] args) {
+    Console.WriteLine(Show(2));
+    Console.WriteLine(Show(0));
+}
+```
+
+```nz output="7\n"
+package main;
+
+import std.io.Console;
+
+public class Node { public int V; public Node? Next; public Node(int v) { V = v; } }
+
+Node? Find(int k) { if (k > 0) { return new Node(k); } return null; }
+
+int Total(int count) {
+    int total = 0;
+    for (int i = 0; i < count; i++) {
+        var n = Find(i);
+        if (n == null) { continue; }
+        total += n.V;
+    }
+    return total;
+}
+
+void Main(string[] args) {
+    var n = Find(args.Length + 1);
+    if (n == null || n.V > 5) { return; }
+    Console.WriteLine(n.V + Total(4));
+}
+```
+
+After an `if` the compiler knows what every path that continues proved (a join): `if (a == null) { return; } else if (b == null) { return; }` leaves both non-null, and `if (c) { x = new Node(1); } else { x = new Node(2); }` leaves `x` non-null. A name stays unknown when a continuing path did not prove it, when any path assigns `null` or an optional value to it, passes it by `ref`, or when a loop that writes it runs again (narrowing from before a loop is forgotten inside the loop for names the loop writes). The decision is conservative: where the compiler cannot tell, the name is not narrowed. A name an `is` pattern declares (`if (n is not Node m) { return; }`) stays in scope in the `if` only, so write `n is null` or `n == null` to narrow `n` itself.
+
+```nz error="possibly null"
+package main;
+
+import std.io.Console;
+
+public class Node { public int V; public Node(int v) { V = v; } }
+
+Node? Find(int k) { if (k > 0) { return new Node(k); } return null; }
+
+void Main(string[] args) {
+    Node? n = Find(1);
+    if (args.Length > 0) {
+        if (n == null) { return; }
+    }
+    Console.WriteLine(n.V);
+}
+```
+
 
 `?.` needs a value on its left. A type name is not a value, so `Counter?.Hit()` is an error, as in C# (write `Counter.Hit()`):
 
@@ -170,7 +243,7 @@ int b = a;
 Console.WriteLine($"{b}");
 ```
 
-`??=` does not narrow when it is inside a branch, a loop, an inner block or an expression (`if (c) { a ??= 5; }`, `(a ??= 5)`, `c && (a ??= 5) > 0`), or when its target is a field, an element or a `ref` parameter:
+`??=` does not narrow when it is inside a branch that the other path does not repeat, a loop, an inner block or an expression (`if (c) { a ??= 5; }`, `(a ??= 5)`, `c && (a ??= 5) > 0`), or when its target is a field, an element or a `ref` parameter:
 
 ```nz fragment error="possibly null"
 int? a = args.Length;
