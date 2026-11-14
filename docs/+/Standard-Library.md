@@ -94,7 +94,7 @@ void Main(string[] args) {
 - `StringBuilder.Append` returns the builder itself, so `sb.Append("a").Append(1);` works as in C#; the result may be called on again or ignored, not stored (it would be a second owner).
 - A collection owns what it holds. `list.Add(x)` and `d[k] = v` move the value in; `RemoveAt`, `Remove`, `Clear` and replacing a value drop what they take out.
 - `foreach` borrows: the loop variable cannot be moved out, and the collection cannot change while the loop runs (`collection is borrowed by the loop`). Over a `Dictionary` the variable is a `KeyValuePair` that points into the dictionary; read `kv.Key` and `kv.Value` inside the loop.
-- `TryGetValue` and `GetValueOrDefault` copy a value out, so they need values that are copied (numbers, `bool`, `char`, enums, strings, optionals, structs of those). For owned values use `ContainsKey` and the indexer. `GetValueOrDefault(key)` also needs a type whose zero is a value: .NET's default of a `string` is null, which an NZ `string` cannot hold, so use `TryGetValue` or `GetValueOrDefault(key, fallback)` there; a `string?` value is fine (its default is null).
+- `TryGetValue` and `GetValueOrDefault` copy a value out, so they need values that are copied (numbers, `bool`, `char`, enums, strings, optionals, structs of those). For owned values use `ContainsKey` and the indexer. `GetValueOrDefault(key)` also needs a type whose zero is a value (numbers, `bool`, `char`, `string`, optionals, enums, and structs of those): for a `string` value a missing key gives `""`, where .NET gives null, because an NZ `string` is never null; a `string?` value gives null. Use `TryGetValue` when you need to tell a missing key from an empty string.
 - `KeyValuePair` needs no import for `foreach (var kv in d)`; to write the type out (`foreach (KeyValuePair<string, int> kv in d)`) import it.
 
 ## Strings: positions are bytes
@@ -182,7 +182,7 @@ A recursive delete keeps one open folder handle per level of the tree on Linux a
 | changing a dictionary inside its `foreach` (`d[k] = v` on an existing key, `Remove`), or `Remove` on a `HashSet` inside its `foreach` | refused when compiling | the loop reads the table in place |
 | `List<string>.Sort()` orders by the culture | orders ordinally (UTF-16 code unit order, as `string.CompareOrdinal`) | see "Culture: always ordinal" |
 | `List<T>.Sort()` for any `T` that is `IComparable`; `Remove` and `Contains` for any `T` with `Equals` | `Sort` for an integer type, `char`, `float`, `double` and `string`; `Remove`, `Contains` and `IndexOf` for a hash key type; others are refused when compiling | interfaces come later |
-| `GetValueOrDefault(key)` on `string` values gives null | refused; use `TryGetValue` or the two-argument form | an NZ `string` is never null |
+| `GetValueOrDefault(key)` on `string` values gives null | gives `""` for a missing key | an NZ `string` is never null; its default is the empty string (use `TryGetValue` to get a `null` for a missing key) |
 | `var r = q;` inside `if (q.HasValue)` makes `r` an `int?` | `r` is an `int`, the type `q` is narrowed to, so `r.HasValue` is an error | NZ narrows the variable itself |
 | `ToCharArray()` gives one `char` per UTF-16 code unit (`"é😀a"` has 4) | one `char` per Unicode scalar value (`"é😀a"` has 3) | a C# `char` is a UTF-16 unit, an NZ `char` a scalar value |
 | `ToString()` of a `[Flags]` enum value names each flag (`R, W`) | the number (`3`), and `[Flags]` gets the warning ``unknown attribute `Flags` `` | attributes have no effect yet |

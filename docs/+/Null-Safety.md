@@ -5,17 +5,29 @@ The main claim of NZ: **a non-optional type never holds `null`, and a `T?` canno
 ## Basic rules
 
 - `null` can only be assigned to a `T?`.
-- A non-optional variable or field must have an initial value (numbers, `bool` and `char` default to zero).
-- The elements of `new T[n]` must have a default value, so `new string[3]` is rejected; `new string?[3]` is accepted.
+- A local variable must have a value before it is used.
+- A field, a static or an array element that is not given a value starts with the default value of its type: zero for numbers, `bool` and `char`, and the empty string `""` for a `string`. `null` is the default only of a `T?`.
+- A class, a struct, an array or a list has no default value, so `new Node[3]` is rejected for a class `Node`; `new Node?[3]` is accepted.
+- An empty `T?` is never turned into a `T` by itself. Say it: `x ?? 0`, `s ?? ""`, or `x.Value`, which stops the program on an empty optional.
 
-```nz fragment error="default"
-var a = new string[3];
+```nz error="no default value"
+package main;
+
+class Node { public int V; }
+
+void Main(string[] args) {
+    var a = new Node[3];
+}
 ```
 
 ```nz fragment
-var a = new string?[3];
-var b = new int[3];
+var a = new string[3];
+var b = new string?[3];
+var c = new int[3];
+string s = default;
 ```
+
+Here `a[0]` is `""` and `b[0]` is `null`. This differs from C#, where `default(string)` and the elements of a `string[]` are `null`: NZ has no `null` in a non-optional type, so the default of a `string` is the empty string, as the default of an `int` is `0`.
 
 ## What makes a `T?` safe to use (narrowing)
 

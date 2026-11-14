@@ -592,7 +592,7 @@ Classes, structs, records, unions, interfaces and aliases take type parameters: 
 
 ### 4.1 Fields
 
-A field is a variable of an object. It needs a value: **an initializer, an optional type (`T?`), or an assignment in every constructor**. Numbers, `bool` and `char` default to zero.
+A field is a variable of an object. It needs a value: **an initializer, an optional type (`T?`), or an assignment in every constructor**. Numbers, `bool` and `char` default to zero and a `string` to `""`.
 
 ```nz output="no name 0 True\n"
 package main;
@@ -614,15 +614,17 @@ void Main(string[] args) {
 ```nz error="needs a value"
 package main;
 
+class Label { }
+
 class User {
-    string Name;
+    Label Name;
 }
 
 void Main(string[] args) { }
 ```
 
-**Status:** Available. A non-optional `string` field will default to `""` (Planned).
-**Differs from C#:** C# gives every field a default (`null` for a string or class); NZ refuses a field that could be `null` without being optional.
+**Status:** Available. A non-optional `string` field without an initializer is `""`.
+**Differs from C#:** C# gives every field a default (`null` for a string or class); in NZ a `string` field is `""`, and a class field that could be `null` without being optional is refused.
 
 ### 4.2 `const`
 

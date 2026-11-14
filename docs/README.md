@@ -1466,7 +1466,7 @@ void Main(string[] args) {
 }
 ```
 
-`new Point()` needs a default for every parameter: a non-optional class, `string` or struct has none in NZ, because a non-optional type never holds `null` (section 3), where C# would leave it `null`. So `new Ok<C>()` with a class `C`, and `new P()` for `record struct P(string Name)`, are errors that ask for the values (`new Ok<C>(Value)`); declare the parameter optional (`string? Name`) to allow `new P()`. `record class P(int X);` (or `record P(int X);`) is a positional record class: the same public fields and `new P(1)`, but it is not taken apart with `var (a, b) = p;`. `with`, record equality and `ToString` are not supported yet. A program's own type named `Result` hides the built-in one, and `?` (below) works only on the built-in one.
+`new Point()` needs a default for every parameter: a non-optional class or struct has none in NZ, because a non-optional type never holds `null` (section 3), where C# would leave it `null`. So `new Ok<C>()` with a class `C`, and `new P()` for `record struct P(C Item)`, are errors that ask for the values (`new Ok<C>(Value)`); declare the parameter optional (`C? Item`) to allow `new P()`. A `string` parameter is the empty string in `new P()`. `record class P(int X);` (or `record P(int X);`) is a positional record class: the same public fields and `new P(1)`, but it is not taken apart with `var (a, b) = p;`. `with`, record equality and `ToString` are not supported yet. A program's own type named `Result` hides the built-in one, and `?` (below) works only on the built-in one.
 
 ### Passing errors on with `?`
 
@@ -1658,7 +1658,7 @@ void Main(string[] args) {
 }
 ```
 
-- **Initializers are constant.** A static starts with a constant expression, `null` (optional types), `default`, or nothing when its type has a default value (numbers, `bool`, `char`, optionals). A value computed when the program starts (`static List<int> xs = new List<int>();`) is not supported yet. So a static of a `char`, `double` or `float` type cannot take a literal initializer: it is zero by default (numbers, `bool`, `char`), or written as an optional. A static of an enum type starts with a member of that enum (`static readonly Color c = Color.Red;`, `static Color? d = Color.Red;`) or is optional (`static Color? e = null;`; enums have no default). As in C#, a member keeps its enum's type there too: `static int n = Color.Red;` and `const int K = Color.Red;` are errors (``cannot implicitly convert `Color` to `int`; write `(int)Color.Red` ``), and `(int)Color.Red` works. The same holds for a tuple: `(int, int)` needs `(int, int)?`, as a tuple field needs an initializer.
+- **Initializers are constant.** A static starts with a constant expression, `null` (optional types), `default`, or nothing when its type has a default value (numbers, `bool`, `char`, `string`, optionals). A value computed when the program starts (`static List<int> xs = new List<int>();`) is not supported yet. So a static of a `char`, `double` or `float` type cannot take a literal initializer: it is zero by default (numbers, `bool`, `char`), or written as an optional. A static of an enum type starts with a member of that enum (`static readonly Color c = Color.Red;`, `static Color? d = Color.Red;`) or is optional (`static Color? e = null;`; enums have no default). As in C#, a member keeps its enum's type there too: `static int n = Color.Red;` and `const int K = Color.Red;` are errors (``cannot implicitly convert `Color` to `int`; write `(int)Color.Red` ``), and `(int)Color.Red` works. The same holds for a tuple: `(int, int)` needs `(int, int)?`, as a tuple field needs an initializer.
 
 ```nz output="Green 1\n"
 package main;
@@ -2336,13 +2336,15 @@ void Main(string[] args) {
 }
 ```
 
-A field or property needs a value: **an initial value, an optional type, or an assignment in every constructor**. Numbers, `bool` and `char` are zero automatically; other types are not:
+A field or property needs a value: **an initial value, an optional type, or an assignment in every constructor**. Numbers, `bool` and `char` are zero automatically, and a `string` is the empty string `""`; a class, a struct, an array or a list has no default:
 
 ```nz error="needs a value"
 package main;
 
+class Label { }
+
 class User {
-    string Name;
+    Label Name;
 }
 
 void Main(string[] args) { }
@@ -2389,17 +2391,19 @@ void Main(string[] args) {
 }
 ```
 
-`: this(...)` runs another constructor of the same type first. A field without an initial value whose type has no default (`Name` above) must be assigned on **every path** of every constructor that does not chain, before it is read and before `this` is used (a method call, `this` passed as a value). A local function called, or a `defer` that runs, while such a field is unassigned counts as a read. The arguments of `: this(...)` run before any constructor, so they may use the parameters and constants but no member of the object and no `this` (as in C#). A constructor that chains starts with every field assigned:
+`: this(...)` runs another constructor of the same type first. A field without an initial value whose type has no default (`Name` above, a class) must be assigned on **every path** of every constructor that does not chain, before it is read and before `this` is used (a method call, `this` passed as a value). A local function called, or a `defer` that runs, while such a field is unassigned counts as a read. The arguments of `: this(...)` run before any constructor, so they may use the parameters and constants but no member of the object and no `this` (as in C#). A constructor that chains starts with every field assigned:
 
 ```nz error="is not assigned on every path"
 package main;
 
+class Label { }
+
 class Token {
-    string Text;
+    Label Text;
 
     Token(bool empty) {
         if (!empty) {
-            Text = "x";
+            Text = new Label();
         }
     }
 }
@@ -3528,7 +3532,7 @@ The labels take the patterns of the `switch` expression (`case Ok<int> ok:`), an
 
 ## 2.11 Arrays and collection expressions
 
-An array `T[]` has a fixed length, lives on the heap and owns its elements. It is made empty with `new T[n]` (every element is the default value of `T`, so `T` needs one: `new string?[3]`, not `new string[3]`), or from its elements, as in C#:
+An array `T[]` has a fixed length, lives on the heap and owns its elements. It is made empty with `new T[n]` (every element is the default value of `T`, so `T` needs one: `new string[3]` holds three empty strings and `new string?[3]` three `null`s, while `new Node[3]` for a class `Node` is an error; use `new Node?[3]`), or from its elements, as in C#:
 
 ```nz output="3 2 4 3\nimport package\n9 10 2\n"
 package main;

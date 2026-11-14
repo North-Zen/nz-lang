@@ -419,7 +419,7 @@ foreach (char c in "aé") {
 }
 ```
 
-- **Status:** Partial: a non-optional `string` has no default value yet (`default(string)` and `new string[3]` are refused); the default `""` is planned.
+- **Status:** Available. The default value of a `string` is `""` (2.14).
 - **Differs from C#:** UTF-8 instead of UTF-16, so `Length` and positions count bytes; comparisons are ordinal, so `"B".CompareTo("a")` is negative; a `string` is never `null` (use `string?`).
 
 ## 2.7 Optional types `T?`
@@ -569,7 +569,7 @@ object o = 1;
 
 ## 2.14 Default values
 
-`default` and `default(T)` give the default of a type: `0` for numbers, `false`, `'\0'`, and `null` for an optional. A bare `default` takes its type from the target.
+`default` and `default(T)` give the default of a type: `0` for numbers, `false`, `'\0'`, `""` for a `string`, and `null` for an optional. A bare `default` takes its type from the target.
 
 ```nz fragment output="0 0 False 0 True\n"
 var x = default(int);
@@ -580,12 +580,14 @@ int? n = default;
 Console.WriteLine($"{x} {y} {b} {(int)c} {n == null}");
 ```
 
-```nz fragment error="`string` has no default value"
+```nz fragment output="True True\n"
 string s = default;
+string? t = default;
+Console.WriteLine($"{s == ""} {t == null}");
 ```
 
-- **Status:** Partial: `string`, classes, structs, enums and type parameters have no default yet. The default of `string` will be `""`.
-- **Differs from C#:** C#'s default of a reference type is `null`; in NZ a non-optional type never holds `null`, so the default of `string` will be `""`.
+- **Status:** Partial: classes, structs, enums and type parameters have no default yet. The default of `string` is `""`.
+- **Differs from C#:** C#'s default of a reference type is `null`, and `default(string)` is `null`; in NZ a non-optional type never holds `null`, so the default of `string` is `""`, as the default of `int` is `0`. An empty `T?` is never turned into a `T` by itself: write `s ?? ""`.
 
 ## 2.15 Conversions
 
@@ -957,12 +959,13 @@ int[] c = { 7 };
 Console.WriteLine($"{a.Length} {b[1]} {c[0]}");
 ```
 
-```nz fragment error="default"
+```nz fragment output="3 True\n"
 var names = new string[3];
+Console.WriteLine($"{names.Length} {names[0] == ""}");
 ```
 
-- **Status:** Partial: `new string[n]` waits for the default value of `string` (2.14); `new string?[n]` works.
-- **Differs from C#:** the element type needs a default value.
+- **Status:** Available. The elements of `new string[n]` are `""`, those of `new string?[n]` are `null`.
+- **Differs from C#:** the element type needs a default value, so `new Node[3]` for a class `Node` is refused (use `new Node?[3]`); the elements of a `string[]` are `""` where C# has `null`.
 
 ## 4.11 Collection expressions and spread
 
