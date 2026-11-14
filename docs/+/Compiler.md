@@ -1,6 +1,6 @@
 # Compiler
 
-The NZ compiler is written in Rust: the `nz-compiler` library in the `compiler/` folder, and the `nzc` command in the `nzc/` folder. Both are one Cargo workspace at the repository root.
+The NZ compiler is made of the `nz-compiler` library in the `compiler/` folder, and the `nzc` command in the `nzc/` folder. Both are one Cargo workspace at the repository root.
 
 ## Stages
 

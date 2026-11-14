@@ -6,7 +6,7 @@
 
 # 0. Introduction
 
-**NZ** (pronounced ***na-ku***) is a *systems* programming language that is memory safe and has **no garbage collector by default**. Its syntax is deliberately very close to **C#**, while its model takes the ideas of **ownership** and **borrowing** from Rust: a strong architecture, but with a syntax that is easier to read. The compiler is written in **Rust**.
+**NZ** is a *systems* programming language that is memory safe and has **no garbage collector by default**. Its syntax is deliberately very close to **C#**, while its model takes the ideas of **ownership** and **borrowing** from Rust: a strong architecture, but with a syntax that is easier to read.
 
 NZ is designed for many kinds of programs: kernels (`no_runtime`), web/app servers, and games.
 
