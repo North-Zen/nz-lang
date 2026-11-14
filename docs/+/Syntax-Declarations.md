@@ -1822,15 +1822,16 @@ try {
 
 The statements are described in [Part 1](Syntax-Reference.md). An exception that nothing catches stops the program with `nz: <Type>: <message>` and exit status 1, without running `finally`, as .NET does.
 
-```nz error="expected Semi, found LBrace"
+```nz output="done\n"
 package main;
+import std.io.Console;
 
 void Main(string[] args) {
-    try { } finally { }
+    try { } finally { Console.WriteLine("done"); }
 }
 ```
 
-**Status:** Planned (the work has started).
+**Status:** Partial: `try`/`finally` works; `catch` and `throw` parse and are refused as "not supported yet" until exception classes exist.
 **Differs from C#:** run-time checks (index out of range, overflow, a failed `Assert`) will throw the .NET exception; some failures stay stops that cannot be caught: `Abort`, `Environment.Exit`, stack overflow, out of memory.
 
 ### 14.3 Failures today

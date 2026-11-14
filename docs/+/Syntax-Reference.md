@@ -74,7 +74,7 @@ int café = 1;    // Error: non-ASCII identifier
 The compiler's keyword table, generated from the compiler:
 
 <!-- GEN:keywords -->
-NZ has 59 keywords: `import` `package` `void` `public` `private` `class` `struct` `enum` `interface` `var` `new` `this` `if` `else` `while` `for` `foreach` `in` `break` `continue` `return` `switch` `case` `default` `is` `ref` `using` `defer` `unsafe` `true` `false` `null` `abstract` `base` `const` `do` `nameof` `operator` `override` `params` `protected` `readonly` `sealed` `sizeof` `static` `type` `union` `virtual` `where` `async` `await` `move` `lock` `yield` `extern` `volatile` `fixed` `stackalloc` `derive`.
+NZ has 63 keywords: `import` `package` `void` `public` `private` `class` `struct` `enum` `interface` `var` `new` `this` `if` `else` `while` `for` `foreach` `in` `break` `continue` `return` `switch` `case` `default` `is` `ref` `using` `defer` `unsafe` `true` `false` `null` `abstract` `base` `const` `do` `nameof` `operator` `override` `params` `protected` `readonly` `sealed` `sizeof` `static` `type` `union` `virtual` `where` `async` `await` `move` `lock` `yield` `extern` `volatile` `fixed` `stackalloc` `try` `catch` `finally` `throw` `derive`.
 <!-- /GEN -->
 
 Some of them are reserved for features that are planned (`async`, `await`, `lock`, `yield`, `abstract`, `override`, `virtual`, `sealed`, `protected`, `base`) or kept for later (`move`, `volatile`, `derive`): using them as a name gives "`async` is reserved for a future feature".
@@ -1293,9 +1293,9 @@ await x;
 
 ## 4.35 `throw` expressions
 
-`x ?? throw new E(...)` and `c ? a : throw ...` are planned with exceptions.
+`x ?? throw new E(...)` and `c ? a : throw ...` parse as in C#; they are refused as "not supported yet" until exception classes exist.
 
-```nz fragment error="expected Semi, found New"
+```nz fragment error="not supported yet: `throw`"
 int x = 1;
 int y = x > 0 ? x : throw new Exception("bad");
 ```
@@ -1704,9 +1704,9 @@ Console.WriteLine($"{Square(2)}");
 
 ## 5.19 `try`, `catch` and `finally`
 
-`try { ... } catch (E e) when (...) { ... } finally { ... }` is planned with C# syntax. Library members will throw .NET's exception types (`FileNotFoundException`, `FormatException`, ...), and run-time checks (index out of range, overflow, a failed `Assert`) will throw too. The no-throw way stays available: `Try`-prefixed members and `Result` with `?`.
+`try { ... } finally { ... }` works as in C#: the `finally` block runs on every way out of the `try` block (its end, `return`, `break`, `continue`, `?`); see [Error Handling](Error-Handling.md). `catch (E e) when (...)` parses and is refused as "not supported yet" until exception classes exist. Library members will throw .NET's exception types (`FileNotFoundException`, `FormatException`, ...), and run-time checks (index out of range, overflow, a failed `Assert`) will throw too. The no-throw way stays available: `Try`-prefixed members and `Result` with `?`.
 
-```nz fragment error="expected Semi, found LBrace"
+```nz fragment output="a\nb\n"
 try {
     Console.WriteLine("a");
 } finally {
@@ -1714,14 +1714,14 @@ try {
 }
 ```
 
-- **Status:** Planned.
+- **Status:** Partial: `try`/`finally` works; `catch` is planned.
 - **Differs from C#:** an exception object is owned: `throw` moves it and `catch` owns it; an exception nothing catches stops the program with `nz: <Type>: <message>` without running `finally` blocks. Under `--no-runtime`, only `try`/`finally` will be allowed.
 
 ## 5.20 `throw`
 
-`throw e;` and `throw;` (rethrow inside `catch`) are planned with exceptions (5.19). Today `Abort("message")` stops the program and `Assert(condition)` checks a condition.
+`throw e;` and `throw;` (rethrow inside `catch`) parse, and are refused as "not supported yet" until exception classes exist (5.19). Today `Abort("message")` stops the program and `Assert(condition)` checks a condition.
 
-```nz fragment error="expected Semi, found New"
+```nz fragment error="not supported yet: `throw`"
 throw new Exception("x");
 ```
 

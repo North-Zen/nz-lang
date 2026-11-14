@@ -14,7 +14,7 @@ Section 8 is not checked by any test, because the feature does not exist.
 
 NZ has two kinds of errors.
 
-1. **Program errors** stop the program at once. They are bugs: an integer that overflows, a division by zero, an index outside an array, a failed `Assert`. The program writes one line to standard error, `nz: <message>`, and exits with code 1. There is nothing to catch: NZ has no `try`, `catch` or `throw` today.
+1. **Program errors** stop the program at once. They are bugs: an integer that overflows, a division by zero, an index outside an array, a failed `Assert`. The program writes one line to standard error, `nz: <message>`, and exits with code 1. There is nothing to catch: NZ has no `catch` or `throw` yet. `try` with `finally` works (section 6).
 2. **Expected failures** are values. A function that can fail returns `Result<T, E>`: either `Ok` with the value or `Err` with the error. The caller reads it with `switch`, or passes the error on with the `?` operator. The standard library has `Try` members (`File.TryReadAllText`) that return a `Result` instead of stopping.
 
 A third thing looks like an error but is not one: a mistake the compiler can see. Using a `T?` without a check, assigning `null` to a `string`, or a constant that overflows is refused before the program runs:
@@ -725,6 +725,7 @@ void Main(string[] args) {
 NZ frees memory without a garbage collector: a value is dropped when its owner leaves scope. Errors keep this rule in the two cases:
 
 - **A `?` that finds an error leaves the function exactly as `return` would.** Every local variable that owns something and every `defer` of every open scope is dropped or run, innermost scope first, and so is what the half-built statement holds. Nothing leaks. The details are in [Ownership: `?` leaves the function like `return`](Ownership.md#-leaves-the-function-like-return).
+- **A `finally` block runs on every way out of its `try` block**, as in C#: the end of the block, `return`, `break`, `continue` and `?`. See "`try` and `finally`" below.
 - **A stop does not clean up.** `Abort`, a failed `Assert` and every runtime error end the process on the spot. Owned values are not dropped, `defer` statements do not run, and the `NZ_ALLOC_REPORT=1` report of live objects is not printed. The operating system takes the memory back when the process ends.
 
 The first program fails in the middle of a loop, and the count of live objects is back to what it was:
@@ -832,6 +833,85 @@ void Main(string[] args) {
 
 Nothing named `deferred` is printed.
 
+### `try` and `finally`
+
+`try { ... } finally { ... }` works as in C#. The `finally` block runs after the `try` block on every way out of it: when the block ends, and at a `return`, `break`, `continue` or `?` inside it. The `defer` statements and drops of the scopes inside the `try` block run first, then the `finally` block, then those of the scopes outside it: one reverse order, as `defer` has.
+
+```nz output="work\nnot found\ncleanup\n-1\n"
+package main;
+import std.io.Console;
+
+int Find(string key) {
+    try {
+        Console.WriteLine("work");
+        if (key != "a") {
+            Console.WriteLine("not found");
+            return -1;
+        }
+        return 1;
+    } finally {
+        Console.WriteLine("cleanup");
+    }
+}
+
+void Main(string[] args) {
+    Console.WriteLine(Find("b"));
+}
+```
+
+A `return` computes its value before the `finally` block runs, so the `finally` block cannot change what is returned (C#):
+
+```nz output="finally sets 2\n1\n"
+package main;
+import std.io.Console;
+
+int Value() {
+    int x = 1;
+    try {
+        return x;
+    } finally {
+        x = 2;
+        Console.WriteLine($"finally sets {x}");
+    }
+}
+
+void Main(string[] args) {
+    Console.WriteLine(Value());
+}
+```
+
+Control cannot leave a `finally` block: `return`, `?`, and a `break` or `continue` to a loop outside it are errors (C# CS0157). Loops and `break` inside it are fine.
+
+```nz fragment error="control cannot leave a `finally` block"
+try {
+    Console.WriteLine("a");
+} finally {
+    return;
+}
+```
+
+The compiler reads a `finally` block as C# does: it may run after any part of the `try` block. A value moved anywhere in the `try` block counts as possibly moved in the `finally` block, even if the `try` block gives the variable a new value later:
+
+```nz error="may have been moved"
+package main;
+import std.io.Console;
+
+class Box { public int N; }
+void Keep(Box b) { }
+
+void Main(string[] args) {
+    var b = new Box();
+    try {
+        Keep(b);
+        b = new Box();
+    } finally {
+        Console.WriteLine(b.N);
+    }
+}
+```
+
+A runtime error inside the `try` block is still a stop: the program ends at once, and the `finally` block does not run. `catch` and `throw` are not supported yet: they need exception classes (section 8).
+
 ## 7. Side by side with C#
 
 NZ code (C# style) reads like C#, but its errors work differently. Each row says what C# does and what NZ does.
@@ -853,7 +933,7 @@ NZ code (C# style) reads like C#, but its errors work differently. Each row says
 
 | Topic | C# | NZ |
 |---|---|---|
-| `try`, `catch`, `finally`, `throw` | exist | **a gap today**: they do not exist, and a program error ends the program. Planned to match C# (section 8) |
+| `try`, `catch`, `finally`, `throw` | exist | `try`/`finally` works as in C# (section 6). **A gap today**: `catch` and `throw` are not supported yet, and a program error ends the program. Planned to match C# (section 8) |
 | `Exception` and its classes | exist | **a gap today**: `Exception` is an unknown type. Planned to match C# (section 8) |
 | An uncaught error | prints a stack trace and ends the program with a code that depends on the system | prints one line, `nz: <message>` or `nz: <ExceptionName>: <message>`, and exits with 1 |
 | Cleanup when an error ends the program | `finally` blocks and `using` run while the exception unwinds, if something catches it; with no catch, it is not guaranteed | no cleanup: no drop, no `defer` (section 6) |
@@ -871,7 +951,7 @@ NZ code (C# style) reads like C#, but its errors work differently. Each row says
 | Checking a promise | `Debug.Assert` is removed from release builds | `Assert` is built in and always on; `Abort` stops the program with a message |
 | Main with another return type, for example `Task` or a result | allowed | `Main` is `void` or `int`; a `Result` cannot be returned |
 
-```nz fragment error="expected Semi"
+```nz fragment error="not supported yet: `throw`"
 throw new Exception("x");
 ```
 
@@ -883,7 +963,7 @@ Exception e = null;
 
 This section describes a plan. **None of it works today**, and it carries no promise of a date. It is not checked by any test.
 
-The plan is to give NZ C#'s exceptions, with C# syntax: `throw`, `try`, `catch` and `finally`.
+The plan is to give NZ C#'s exceptions, with C# syntax: `throw`, `try`, `catch` and `finally` (`try`/`finally` without `catch` works already, section 6).
 
 - **Program errors** (an overflow, a division by zero, an index out of range, a failed `Assert`) would throw an exception that a `try`/`catch` can catch. An uncaught exception would still end the program.
 - **Standard library members would throw as .NET's do.** `File.ReadAllText` would throw `FileNotFoundException`, a bad `int.Parse` would throw `FormatException`, and so on, instead of stopping the program.
