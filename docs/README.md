@@ -1509,6 +1509,31 @@ void Main(string[] args) {
 }
 ```
 
+The standard library offers `Try` twins of its file members that return a `Result<T, IOError>` instead of stopping the program, so `?` passes a failed read on (see [Standard Library: members that return a result](+/Standard-Library.md#members-that-return-a-result-try-twins)):
+
+```nz output="no such file\n"
+package main;
+
+import std.io.Console;
+import std.io.File;
+
+Result<int, IOError> Count(string path) {
+    string text = File.TryReadAllText(path)?;
+    return new Ok<int>(text.Length);
+}
+
+void Main(string[] args) {
+    switch (Count("no-such-file-nz-readme.txt")) {
+        case Ok<int> ok:
+            Console.WriteLine($"{ok.Value} characters");
+            break;
+        case Err<IOError> e:
+            Console.WriteLine(e.Error.Kind == IOErrorKind.NotFound ? "no such file" : e.Error.Message);
+            break;
+    }
+}
+```
+
 The rules:
 
 - `?` may stand anywhere in a function body where an expression can: in an argument, a condition, an arm of `?:`, `??`, `&&`, `||` or `switch`, a `when` guard, an interpolation hole, a loop header. It leaves the function exactly as `return` would (see [Ownership: `?` leaves the function like `return`](+/Ownership.md#-leaves-the-function-like-return)). Inside a local function it leaves that local function.
@@ -1516,7 +1541,7 @@ The rules:
 - `?` cannot stand inside `defer`, nor in a field, constant or static initializer.
 - The operand is evaluated once, where it stands, and is consumed: a variable that holds an owned `Result` is moved, and a field or a list element that owns something cannot be the operand (copy a `Result` of copyable values freely).
 - `x?` does not make `x` non-null afterwards (a later batch may add that).
-- A `?` is not a statement on its own: as in C#, only an assignment, a call, `++`, `--` or `new` can be one, so `Check()?;` is an error for now; name the value instead (`var ignored = Check()?;`).
+- `?` may also be a statement on its own: `Check()?;` evaluates the call, leaves the function with the error exactly as `var x = Check()?;` would, and discards the success value (an owned value, such as a string, a list or a class instance, is released at the end of the statement). Only a `?` can be a statement this way: `Check();` keeps its `Result` as a discarded value and `x + 1;` or `x;` is still an error, as in C#.
 
 **Reading `?` next to the conditional operator.** After an expression, a `?` followed by a token that can start an expression is the conditional operator `c ? a : b`, as in C#; otherwise it passes an error on. So `f()? - 1` is a conditional (and an error without its `:`); write `(f()?) - 1` to pass the error on and then subtract. The same holds for `+`, `-`, `*`, `&`, `!`, `~`, `(`, `[`, `^` and `..` after the `?`. `?.`, `?[` and `??` are operators of their own, so `f()?.x` is a null-conditional member access and `f()? ?? 0` passes the error on, then coalesces. In an interpolation hole with a format, put the operator in parentheses: `$"{(f()?):D2}"`.
 
@@ -3600,7 +3625,7 @@ void Main(string[] args) {
 }
 ```
 
-- **Moving out of a field or a list element is an error**: the object or list keeps owning it.
+- **Moving out of a field or a list element is an error**: the object or list keeps owning it. `var t = l[i];` of a class element is a read-only alias of the element that ends when the collection may change (see Ownership, "Reading an element through an alias").
 - **Borrowing lasts one call.** `in` lends for reading, `ref` lends for writing; there are no local borrows. An `in` parameter is a read-only reference, as in C#, also for value types: a change to the caller's storage during the call (by an `unsafe` callee writing a static, or through another handle to a shared object) is seen through it, except through an `in string`, which keeps the value the call started with (see [Ownership: Strings](+/Ownership.md#strings)). One `ref` (or moved) argument cannot share storage with another argument of the same call, and a `foreach` freezes the collection it walks.
 - **Local functions borrow what they read.** A local function reads the variables around it as a read-only borrow that lasts for each call; it cannot move, assign or lend them by `ref`, and each call counts as a read of every variable it reads ([Ownership](+/Ownership.md)).
 - **Freed at scope exit.** Owned objects are freed when the owner leaves scope, is replaced or is moved into a consuming call; `defer`s and drops of a scope run in one reverse registration order. Inside one drop the object is freed first, then its fields in declaration order, each completely before the next (see [Ownership: The order inside one drop](+/Ownership.md#the-order-inside-one-drop)); real C# has no deterministic destructor order, so this order is NZ's own. Strings are reference-counted: every holder keeps a count and the last one frees the bytes (see [Ownership: Strings](+/Ownership.md#strings)).
@@ -3668,6 +3693,13 @@ import std.io.File;
 | `Exists` (static) | `bool Exists(string?)` | Whether the path names an existing file (not a folder); `false` for null or an empty path. |
 | `Delete` (static) | `void Delete(string)` | Deletes the file; a missing file is no error, a missing folder is. |
 | `Copy` (static) | `void Copy(string, string)`<br>`void Copy(string, string, bool)` | Copies the file; an existing destination is an error unless `overwrite` is `true`. |
+| `TryReadAllText` (static) | `Result<string, IOError> TryReadAllText(string)` | `File.ReadAllText`, returning `Err` instead of stopping. |
+| `TryReadAllLines` (static) | `Result<string[], IOError> TryReadAllLines(string)` | `File.ReadAllLines`, returning `Err` instead of stopping. |
+| `TryReadAllBytes` (static) | `Result<byte[], IOError> TryReadAllBytes(string)` | `File.ReadAllBytes`, returning `Err` instead of stopping. |
+| `TryWriteAllText` (static) | `Result<bool, IOError> TryWriteAllText(string, string?)` | `File.WriteAllText`; `Ok(true)` when it wrote. |
+| `TryWriteAllBytes` (static) | `Result<bool, IOError> TryWriteAllBytes(string, byte[])` | `File.WriteAllBytes`; `Ok(true)` when it wrote. |
+| `TryAppendAllText` (static) | `Result<bool, IOError> TryAppendAllText(string, string?)` | `File.AppendAllText`; `Ok(true)` when it wrote. |
+| `TryDelete` (static) | `Result<bool, IOError> TryDelete(string)` | `File.Delete`; `Ok(true)` when it returned (a missing file is no error). |
 
 #### `Path`
 
@@ -3708,6 +3740,9 @@ import std.io.Directory;
 | `GetDirectories` (static) | `string[] GetDirectories(string)`<br>`string[] GetDirectories(string, string)` | The folders in the folder (matching `searchPattern`), sorted ordinally. |
 | `Delete` (static) | `void Delete(string)`<br>`void Delete(string, bool)` | Deletes the folder: it must be empty unless `recursive` is `true`. |
 | `GetCurrentDirectory` (static) | `string GetCurrentDirectory()` | The current directory, as a full path. |
+| `TryCreateDirectory` (static) | `Result<bool, IOError> TryCreateDirectory(string)` | `Directory.CreateDirectory`; `Ok(true)` when the folder exists afterwards. |
+| `TryGetFiles` (static) | `Result<string[], IOError> TryGetFiles(string)`<br>`Result<string[], IOError> TryGetFiles(string, string)` | `Directory.GetFiles`, returning `Err` instead of stopping. |
+| `TryDelete` (static) | `Result<bool, IOError> TryDelete(string)`<br>`Result<bool, IOError> TryDelete(string, bool)` | `Directory.Delete`; `Ok(true)` when the folder is gone. |
 
 ### Package `std.collections`
 

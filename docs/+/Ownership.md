@@ -49,6 +49,56 @@ void Main(string[] args) {
 
 Lend the field with `in`, copy the values you need, or take the object out by replacing it, as `Take` does in `examples/stack.nz` (a `ref` parameter may be moved out of when it is filled again before the function returns).
 
+### Reading an element through an alias
+
+`var t = l[i];` (or `Token t = l[i];`) where the element is an object of a class does not move it: `t` is a **read-only alias** of the element, which the collection keeps owning (in C# the variable copies the reference; NZ code (C# style) reads the same element in place). This works for list, array and dictionary elements, also through fields and `in` or `ref` parameters. No count changes and nothing is freed when `t` ends.
+
+```nz output="2 b\n"
+package main;
+
+import std.io.Console;
+import std.collections.List;
+
+class Token {
+    public int Kind;
+    public string Text = "";
+}
+
+void Main(string[] args) {
+    List<Token> tokens = new List<Token>();
+    tokens.Add(new Token { Kind = 1, Text = "a" });
+    tokens.Add(new Token { Kind = 2, Text = "b" });
+    var t = tokens[1];
+    Console.WriteLine($"{t.Kind} {t.Text}");
+    tokens.Clear();
+}
+```
+
+The alias follows the rule of a pattern variable: it borrows the element until its last use, and anything that may change the collection or what holds it ends it (`Add`, `Remove`, `Clear`, `l[i] = ...`, replacing or moving `l` or its owner, passing it by `ref`, a method of the owner that may change it, on any path, in a loop's next iteration, a `defer` or a `when` guard). A use after that is an error:
+
+```nz error="can no longer be used"
+package main;
+
+import std.io.Console;
+import std.collections.List;
+
+class Token {
+    public int Kind;
+}
+
+void Main(string[] args) {
+    List<Token> tokens = new List<Token>();
+    tokens.Add(new Token());
+    var t = tokens[0];
+    tokens.Add(new Token());
+    Console.WriteLine(t.Kind);
+}
+```
+
+It is read-only, as an `in` parameter: `t.Kind = 1`, `t.Kind++`, a method that changes `t`, `ref` of `t` or of its parts, and assigning `t` are refused (change the element through the collection after the last use of `t`). The same holds for a variable that reads the element through `t`: a pattern variable (`t is Token x`, a `switch` case), or the variable of a `foreach` over a part of `t`. It cannot be moved either (`return t`, `other = t`, `l.Add(t)`, a by-value argument); pass it with `in`. Returning an element (`Token Cur(in List<Token> l, int i) { return l[i]; }`) stays refused: use the alias inside the function, or return a copy of the values you need.
+
+Not aliases (the earlier error stays): an element of an owned struct type, an element of a temporary collection, a declared type other than the element's own (`Token? t = l[0]` for a `List<Token>`), and a choice between elements (`c ? l[0] : l[1]`). An element inside a `Shared<T>` object is refused (`not supported yet`), because another handle could change the collection while the alias lives.
+
 ## Tuples
 
 A tuple is copied when all its elements are copied (numbers, `bool`, `char`, `string`, enums, structs that own nothing, and tuples of those). A tuple that holds an owned element, such as `(int, C)` with a class `C`, is owned too: it **moves and is freed as a whole**. Building it moves the owned elements in, `var u = t;` moves it, and when its owner leaves scope every owned element is freed once.

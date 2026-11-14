@@ -34,9 +34,58 @@ nz: ArgumentOutOfRangeException: Index was out of range. Must be non-negative an
 - a culture `StringComparison` value (`CurrentCulture`, `InvariantCulture`, ...), which NZ does not support;
 - `File.ReadAllText`/`ReadAllLines` of a file with a UTF-16 or UTF-32 byte order mark: `nz: NotSupportedException: The file '...' starts with a UTF-16 or UTF-32 byte order mark; File.ReadAllText reads UTF-8 only.`
 
-Messages name full paths, as .NET's do. A program avoids the stop by checking first, as C# code often does: `File.Exists(path)`, `d.ContainsKey(k)`, `int.TryParse(s)`. Members that return a result instead of failing are a later batch (once `Result` exists).
+Messages name full paths, as .NET's do. A program avoids the stop by checking first, as C# code often does: `File.Exists(path)`, `d.ContainsKey(k)`, `int.TryParse(s)`. The `File` and `Directory` members that a command-line tool needs also have `Try` twins that return a `Result` instead of stopping (next section).
 
 C#'s `TryX(..., out T value)` members return the value as an optional instead: `int? n = int.TryParse(s);`, `int? v = d.TryGetValue(k);` (decision S2). The compiler makes you check the optional before you use it.
+
+## Members that return a result: `Try` twins
+
+Real C# has no such members: .NET throws `FileNotFoundException` and C# code catches it. NZ keeps the throwing-style members as they are (they stop the program, as above) and adds `Try`-prefixed twins for the I/O members a tool needs. A twin takes the same arguments, does the same work, and returns a `Result<T, IOError>` (the built-in `Result` of section 1.7 of the guide, visible without an import) instead of stopping. With the `?` operator an error is passed on: `string text = File.TryReadAllText(path)?;`.
+
+| Member | Returns | Same work as |
+|---|---|---|
+| `File.TryReadAllText(path)` | `Result<string, IOError>` | `File.ReadAllText` |
+| `File.TryReadAllLines(path)` | `Result<string[], IOError>` | `File.ReadAllLines` |
+| `File.TryReadAllBytes(path)` | `Result<byte[], IOError>` | `File.ReadAllBytes` |
+| `File.TryWriteAllText(path, contents)` | `Result<bool, IOError>` | `File.WriteAllText` |
+| `File.TryWriteAllBytes(path, bytes)` | `Result<bool, IOError>` | `File.WriteAllBytes` |
+| `File.TryAppendAllText(path, contents)` | `Result<bool, IOError>` | `File.AppendAllText` |
+| `File.TryDelete(path)` | `Result<bool, IOError>` | `File.Delete` |
+| `Directory.TryCreateDirectory(path)` | `Result<bool, IOError>` | `Directory.CreateDirectory` |
+| `Directory.TryGetFiles(path)`, `(path, searchPattern)` | `Result<string[], IOError>` | `Directory.GetFiles` |
+| `Directory.TryDelete(path)`, `(path, recursive)` | `Result<bool, IOError>` | `Directory.Delete` |
+
+A member that returns nothing in .NET returns `Result<bool, IOError>` whose `Ok` value is always `true` (there is nothing else to report; use `?` or a `switch` on the `Err`). The result owns its string, array or message like any other result (see "Who owns a result"), and an unused result is dropped at the end of its statement.
+
+`IOError` is a small struct with two fields; both `IOError` and `IOErrorKind` are visible in every file without an import:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `Message` | `string` | exactly the text .NET puts in the exception message, the text the stopping twin prints after `nz: <ExceptionType>: ` |
+| `Kind` | `IOErrorKind` | `NotFound` (a missing file, .NET's `FileNotFoundException`), `DirectoryNotFound` (a missing folder on the way, `DirectoryNotFoundException`), `AccessDenied` (`UnauthorizedAccessException`: no permission, or a folder where a file is needed), `AlreadyExists` (an `IOException` whose message says the target already exists, such as `CreateDirectory` over a file), `Other` (every other failure: an empty path, a folder that is not empty, a full disk, ...) |
+
+The checks .NET makes on its arguments become errors too: `File.TryReadAllText("")` returns an `Err` of kind `Other` holding `The value cannot be an empty string. (Parameter 'path')`, where `File.ReadAllText("")` stops with that text. Only a failure the OS reports is caught: running out of memory still stops the program.
+
+```nz output="no such file\n"
+package main;
+
+import std.io.Console;
+import std.io.File;
+
+Result<int, IOError> Count(string path) {
+    string text = File.TryReadAllText(path)?;
+    return new Ok<int>(text.Length);
+}
+
+string Describe(Result<int, IOError> r) => r switch {
+    Ok<int> ok => $"{ok.Value} characters",
+    Err<IOError> e => e.Error.Kind == IOErrorKind.NotFound ? "no such file" : $"failed: {e.Error.Message}",
+};
+
+void Main(string[] args) {
+    Console.WriteLine(Describe(Count("no-such-file-nz-docs.txt")));
+}
+```
 
 ## Who owns a result
 
@@ -57,7 +106,7 @@ Comparisons, searches and case changes never depend on the machine's culture: `S
 
 ## `ToString()` of values
 
-A number, `bool`, `char` or enum has `ToString()` with no arguments, as in C#: the text an interpolation `{x}` gives. An enum value gives its member's name, or its number when no member has that value (`(K)7`). The result is a new `string` that the caller owns, like any other string a member returns. `Console.WriteLine(k)` with an enum value is not accepted yet (C# boxes it to an `object`): write `Console.WriteLine(k.ToString())` or `Console.WriteLine($"{k}")`.
+A number, `bool`, `char` or enum has `ToString()` with no arguments, as in C#: the text an interpolation `{x}` gives. An enum value gives its member's name, or its number when no member has that value (`(K)7`). The result is a new `string` that the caller owns, like any other string a member returns. `Console.Write(k)` and `Console.WriteLine(k)` (and the `Console.Error` writers) accept an enum value too and print the same text; NZ has no `object`, so this is a narrow rule for these members (an optional enum is not accepted).
 
 ```nz output="a 5 B 1 7\n"
 package main;
@@ -122,6 +171,7 @@ A recursive delete keeps one open folder handle per level of the tree on Linux a
 | `Console.Error` is a `TextWriter` value | only the receiver of `Write`/`WriteLine` | NZ has no `TextWriter` yet |
 | `Encoding.UTF8` is an `Encoding` value | only the receiver of its members | UTF-8 is the only encoding |
 | `Directory.CreateDirectory` returns a `DirectoryInfo` | returns nothing | no `DirectoryInfo` yet |
+| `File.ReadAllText` and the other I/O members throw; C# code catches the exception | they stop the program; `File.TryReadAllText` and the other `Try` twins return `Result<T, IOError>` (not in .NET) | NZ has no exceptions to catch; see "Members that return a result" |
 | `TryParse(s, out v)`, `TryGetValue(k, out v)` | `int? TryParse(s)`, `TValue? TryGetValue(k)` | NZ has no `out` |
 | `BitConverter.ToChar`, `GetBytes(char)` | not offered: `GetBytes('a')` is an error (write `GetBytes((ushort)c)` for C#'s two bytes) | a C# `char` is a UTF-16 unit, an NZ `char` a scalar value |
 | `File.ReadAllText`/`ReadAllLines` decode UTF-16 and UTF-32 files (by their byte order mark) | stop with `NotSupportedException` | UTF-8 is the only encoding |
@@ -131,7 +181,6 @@ A recursive delete keeps one open folder handle per level of the tree on Linux a
 | changing a dictionary inside its `foreach` (`d[k] = v` on an existing key, `Remove`), or `Remove` on a `HashSet` inside its `foreach` | refused when compiling | the loop reads the table in place |
 | `List<string>.Sort()` orders by the culture | orders ordinally (UTF-16 code unit order, as `string.CompareOrdinal`) | see "Culture: always ordinal" |
 | `List<T>.Sort()` for any `T` that is `IComparable`; `Remove` and `Contains` for any `T` with `Equals` | `Sort` for an integer type, `char`, `float`, `double` and `string`; `Remove`, `Contains` and `IndexOf` for a hash key type; others are refused when compiling | interfaces come later |
-| `Console.WriteLine(k)` with an enum value boxes it to `object` | refused; write `Console.WriteLine(k.ToString())` | NZ has no `object` |
 | `GetValueOrDefault(key)` on `string` values gives null | refused; use `TryGetValue` or the two-argument form | an NZ `string` is never null |
 | `var r = q;` inside `if (q.HasValue)` makes `r` an `int?` | `r` is an `int`, the type `q` is narrowed to, so `r.HasValue` is an error | NZ narrows the variable itself |
 | `ToCharArray()` gives one `char` per UTF-16 code unit (`"é😀a"` has 4) | one `char` per Unicode scalar value (`"é😀a"` has 3) | a C# `char` is a UTF-16 unit, an NZ `char` a scalar value |
