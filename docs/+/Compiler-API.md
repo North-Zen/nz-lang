@@ -1,6 +1,6 @@
 # Compiler API
 
-The NZ compiler is a library as well as the `nzc` command. Its public interface, `nz_compiler::api` (the library package `nz-compiler` in `compiler/`; the `nzc` command is its own package in `nzc/`), is what the language server and other tools build on, in the way Roslyn serves C#. This page is the contract. The three compilers the project keeps (Rust, C# and the self-hosted NZ one) give the same shape, so a client written against one can move to another.
+The NZ compiler is a library as well as the `nzc` command. Its public interface, `nz_compiler::api` (the library package `nz-compiler` in `compiler/`; the `nzc` command is its own package in `nzc/`), is what the language server and other tools build on. This page is the contract. The compilers the project keeps give the same shape, so a client written against one can move to another.
 
 Version: `0.1.7` (`nz_compiler::api::VERSION`). Every change is listed in `compiler/API-CHANGES.md`. While the version is `0.x`, a breaking change bumps the minor version.
 
@@ -14,30 +14,30 @@ Version: `0.1.7` (`nz_compiler::api::VERSION`). Every change is listed in `compi
 
 ## Types and members
 
-Names are snake_case in Rust and NZ and PascalCase in C#. Methods marked "(path)" take a file path. A relative path is read from the workspace root.
+Names are snake_case. Methods marked "(path)" take a file path. A relative path is read from the workspace root.
 
-| Rust and NZ | C# | What it is | Members |
-|---|---|---|---|
-| `Workspace` | `Workspace` | The mutable host: unsaved texts over the disk, and the last compilation of each program | `new(root)`, `set_text(path, text)`, `remove_text(path)`, `disk_changed()`, `compilation(entry, mode)`, `forget(entry, mode)` |
-| `CheckMode` | `CheckMode` | What a check is for | `Program` (needs `Main`), `Tests` (the `[Test]` functions), `Library` (a package on its own) |
-| `Compilation` | `Compilation` | An immutable snapshot of one program: the entry package and what it imports | `diagnostics()`, `files()`, `text(path)`, `line_index(path)`, `mode()`, `syntax_tree(path)`, `semantic_model(path)`, `references(symbol)`, `emit(options)` |
-| `Diagnostic` | `Diagnostic` | One problem | `code()`, `severity()`, `is_error()`, `message()`, `location()`, `related()`, `render(compilation)` |
-| `DiagnosticCode` | `DiagnosticCode` | `NZ` and four digits | `number()`, text form `NZ1003` |
-| `Severity` | `Severity` | | `Error`, `Warning` |
-| `SyntaxTree` | `SyntaxTree` | The syntax of one file | `text()`, `tokens()`, `line_index()`, `has_errors()`, `items()`, `declarations()`, `node_at(offset)` |
-| `SyntaxToken` | `SyntaxToken` | One token with its trivia | `kind()`, `range()`, `leading()`, `trailing()` |
-| `SyntaxTokenKind` | `SyntaxTokenKind` | | `Keyword`, `Identifier`, `Literal`, `Punctuation`, `EndOfFile` |
-| `Trivia` | `Trivia` | Text between tokens | `kind()`, `range()` |
-| `TriviaKind` | `TriviaKind` | | `Whitespace`, `LineBreak`, `LineComment`, `DocComment`, `BlockComment`, `ByteOrderMark` |
-| `SyntaxNode` | `SyntaxNode` | A view of one node | `kind()`, `range()`, `name_range()` |
-| `SyntaxKind` | `SyntaxKind` | | `Item`, `Member`, `Statement`, `Expression`, `Name` |
-| `SemanticModel` | `SemanticModel` | What the code of one file means | `type_at(offset)`, `symbol_at(offset)`, `declarations()`, `locals()`, `references(symbol)`, `symbols_in_scope(offset)` |
-| `Symbol` | `Symbol` | One declaration; two symbols are equal when they come from the same declaration | `kind()`, `name()`, `container()`, `declaration()`, `signature()` |
-| `SymbolKind` | `SymbolKind` | | `Type`, `Function`, `Method`, `Field`, `Property`, `Parameter`, `Local`, `LocalFunction`, `EnumVariant`, `Constant`, `Static` |
-| `TypeDisplay` | `TypeDisplay` | A type as hover shows it (`List<string>?`) | `text()` |
-| `EmitOptions`, `Backend`, `EmitResult` | same | Output of a checked compilation | `Backend::C11`; `EmitResult { c_source, diagnostics }` |
-| `run_on_compiler_stack(work)` | `Compiler.RunOnLargeStack` | Runs work on the compiler's large stack | for clients walking deeply nested code |
-| `keywords()`, `builtin_type_names()`, `is_identifier(text)` | `Words` | The words of the language | usable keywords (no reserved words), built-in type names, whether a text may be a declared name |
+| Name | What it is | Members |
+|---|---|---|
+| `Workspace` | The mutable host: unsaved texts over the disk, and the last compilation of each program | `new(root)`, `set_text(path, text)`, `remove_text(path)`, `disk_changed()`, `compilation(entry, mode)`, `forget(entry, mode)` |
+| `CheckMode` | What a check is for | `Program` (needs `Main`), `Tests` (the `[Test]` functions), `Library` (a package on its own) |
+| `Compilation` | An immutable snapshot of one program: the entry package and what it imports | `diagnostics()`, `files()`, `text(path)`, `line_index(path)`, `mode()`, `syntax_tree(path)`, `semantic_model(path)`, `references(symbol)`, `emit(options)` |
+| `Diagnostic` | One problem | `code()`, `severity()`, `is_error()`, `message()`, `location()`, `related()`, `render(compilation)` |
+| `DiagnosticCode` | `NZ` and four digits | `number()`, text form `NZ1003` |
+| `Severity` |  | `Error`, `Warning` |
+| `SyntaxTree` | The syntax of one file | `text()`, `tokens()`, `line_index()`, `has_errors()`, `items()`, `declarations()`, `node_at(offset)` |
+| `SyntaxToken` | One token with its trivia | `kind()`, `range()`, `leading()`, `trailing()` |
+| `SyntaxTokenKind` |  | `Keyword`, `Identifier`, `Literal`, `Punctuation`, `EndOfFile` |
+| `Trivia` | Text between tokens | `kind()`, `range()` |
+| `TriviaKind` |  | `Whitespace`, `LineBreak`, `LineComment`, `DocComment`, `BlockComment`, `ByteOrderMark` |
+| `SyntaxNode` | A view of one node | `kind()`, `range()`, `name_range()` |
+| `SyntaxKind` |  | `Item`, `Member`, `Statement`, `Expression`, `Name` |
+| `SemanticModel` | What the code of one file means | `type_at(offset)`, `symbol_at(offset)`, `declarations()`, `locals()`, `references(symbol)`, `symbols_in_scope(offset)` |
+| `Symbol` | One declaration; two symbols are equal when they come from the same declaration | `kind()`, `name()`, `container()`, `declaration()`, `signature()` |
+| `SymbolKind` |  | `Type`, `Function`, `Method`, `Field`, `Property`, `Parameter`, `Local`, `LocalFunction`, `EnumVariant`, `Constant`, `Static` |
+| `TypeDisplay` | A type as hover shows it (`List<string>?`) | `text()` |
+| `EmitOptions`, `Backend`, `EmitResult` | Output of a checked compilation | `Backend::C11`; `EmitResult { c_source, diagnostics }` |
+| `run_on_compiler_stack(work)` | Runs work on the compiler's large stack | for clients walking deeply nested code |
+| `keywords()`, `builtin_type_names()`, `is_identifier(text)` | The words of the language | usable keywords (no reserved words), built-in type names, whether a text may be a declared name |
 
 Every public enum may gain variants (in Rust it is `#[non_exhaustive]`), so a client always handles the rest. Structs that only the compiler builds may gain fields.
 

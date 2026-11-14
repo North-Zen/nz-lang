@@ -1,24 +1,10 @@
 # Syntax Reference, Part 2: Declarations
 
-> **Status: Experimental.** NZ is a young language and its syntax will change. NZ code (C# style) follows the syntax of C# 14 except where a deviation was decided on purpose; a piece of syntax that turns out not to fit the language will be changed.
-
 This page lists how a program is declared: source files and packages, types, members, parameters, generics, interfaces, inheritance, delegates and events, attributes, preprocessor directives, async code, exceptions, reflection, unsafe code, and the ownership rules that exist only in NZ. [Part 1](Syntax-Reference.md) covers the rest: lexical structure, literals, operators and precedence, built-in types, variables, expressions, statements and patterns.
 
 ## How to read this page
 
-Every construct has a short entry: the syntax, a sentence or two on what it does, an example, and two lines:
-
-- **Status** says whether today's compiler accepts it.
-- **Differs from C#** says in one line how NZ differs from C# 14, or "Same as C#".
-
-| Status | Meaning |
-|---|---|
-| Available | Works on today's compiler. Every example marked Available is checked and run by the docs test. |
-| Partial | Works, but a part is missing; the entry says which. |
-| Planned | Decided, and coming. The example shows the C# syntax that NZ will accept; today the compiler refuses it. |
-| Later | Wanted, but deferred: no date yet. |
-| Not planned | Decided against. |
-| NZ only | Exists only in NZ (no C# equivalent). The entry also gives its status. |
+Every construct has a short entry: the syntax, a sentence or two on what it does, and an example.
 
 Every NZ code block on this page is a whole program and is checked by the docs test; a block that shows an error message is a program the compiler refuses today. Blocks shown as plain text are not checked, because the compiler does not accept them yet.
 
@@ -41,8 +27,7 @@ Every NZ code block on this page is a whole program and is checked by the docs t
 15. [Reflection](#15-reflection)
 16. [Unsafe code and native interop](#16-unsafe-code-and-native-interop)
 17. [Ownership and memory (NZ only)](#17-ownership-and-memory-nz-only)
-18. [Not planned](#18-not-planned)
-19. [Index](#19-index)
+18. [Index](#18-index)
 
 ---
 
@@ -62,15 +47,13 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** C# files start with `using` directives and an optional `namespace`; NZ files start with `package` and `import`.
+NZ files start with `package` and `import`.
 
 ### 1.2 `package`
 
 `package name;` is the first line of every file. A package is a **folder**: all `.nz` files directly inside one folder belong to one package, and a subfolder is another package. A dotted name such as `app.util` stands for the folder `app/util/`. All files of a package share one set of top-level names.
 
-**Status:** Available.
-**Differs from C#:** C# uses `namespace`, which is independent of folders. In NZ the folder decides the package, and `namespace` is not accepted (see 1.8).
+The folder decides the package, and `namespace` is not accepted (see 1.8).
 
 ### 1.3 `import`
 
@@ -101,8 +84,7 @@ void Main(string[] args) {
 
 An import belongs to one file. A name must be imported before it is used: `geo.Point p;` without an import is an error. Two packages cannot import each other, directly or through others.
 
-**Status:** Available.
-**Differs from C#:** C# writes `using geo;` (a whole namespace) and `using P = geo.Point;`. NZ imports names, has a group form, and a qualified name without an import is an error.
+NZ imports names, has a group form, and a qualified name without an import is an error.
 
 ### 1.4 Folders as packages
 
@@ -114,12 +96,11 @@ proj/
   geo/point.nz    package geo;  public class Point { public int X = 7; }
 ```
 
-**Status:** Available.
-**Differs from C#:** C# groups files with a project file; NZ has no project file yet, the folders decide.
+NZ has no project file yet; the folders decide.
 
 ### 1.5 Entry point `Main`
 
-The entry package declares one top-level `Main`, in one of C#'s four forms: `void Main()`, `void Main(string[] args)`, `int Main()`, `int Main(string[] args)`. An `int` result is the exit status. `args` holds the arguments without the program name.
+The entry package declares one top-level `Main`, in one of four forms: `void Main()`, `void Main(string[] args)`, `int Main()`, `int Main(string[] args)`. An `int` result is the exit status. `args` holds the arguments without the program name.
 
 ```nz output="hi\n"
 package main;
@@ -132,8 +113,7 @@ int Main() {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** `Main` is a top-level function, not a `static` method of a class. `async Task Main` is not available (see 13).
+`Main` is a top-level function, not a `static` method of a class. `async Task Main` is not available (see 13).
 
 ### 1.6 Top-level functions
 
@@ -155,8 +135,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** C# has no top-level functions (only methods of types, and local functions); in NZ they are the normal case and take no `static`.
+Top-level functions are the normal case and take no `static`.
 
 ### 1.7 Top-level constants and statics
 
@@ -175,36 +154,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available. A mutable static needs `unsafe` to be read or written (see 4.4).
-**Differs from C#:** C# has no top-level fields or constants; they live in a class.
-
-### 1.8 `namespace` and `using` directives
-
-NZ uses `package` and `import` in their place. `namespace` and the `using` directive (`using System;`, `using static`, `global using`) are not accepted. The `using` **statement** exists (see 17.6).
-
-```nz error="expected `package name;` at the start of the file"
-namespace App;
-
-void Main(string[] args) { }
-```
-
-**Status:** Not planned.
-**Differs from C#:** a deliberate deviation: `package` follows the folder and `import` names what it brings in.
-
-### 1.9 Top-level statements
-
-C# 9 allows statements at the top level of one file, without a `Main`. NZ requires `Main`.
-
-```nz error="a function needs a return type"
-package main;
-
-import std.io.Console;
-
-Console.WriteLine("top");
-```
-
-**Status:** Later.
-**Differs from C#:** the C# form is not accepted; write `void Main(string[] args) { ... }`.
+Top-level fields and constants are allowed.
 
 ---
 
@@ -227,8 +177,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available. NZ only.
-**Differs from C#:** C# members are private unless a keyword says otherwise; the letter means nothing in C#.
+A member without a keyword is private; the letter of its name decides nothing.
 
 ### 2.2 `public` and `private`
 
@@ -244,8 +193,7 @@ public class C {
 void Main(string[] args) { }
 ```
 
-**Status:** Available.
-**Differs from C#:** the keywords mean the same; the naming checks are NZ's.
+The naming checks are part of NZ.
 
 ### 2.3 Visibility of types
 
@@ -262,41 +210,7 @@ class Point {
 void Main(string[] args) { }
 ```
 
-**Status:** Partial. The default is C#'s `internal` (the package); writing `public` on a constructor of a type that is not public is still refused.
-**Differs from C#:** C# accepts `public Point(...)` inside an internal type; NZ will too.
-
-### 2.4 `internal`
-
-`internal` names the default visibility of a type (the package) explicitly.
-
-```text
-internal class Cache { }
-```
-
-**Status:** Planned.
-**Differs from C#:** today the word is not accepted; the meaning will be C#'s, with the package in place of the assembly.
-
-### 2.5 `protected`
-
-A `protected` member is visible in its class and in the classes derived from it. It comes with class inheritance (section 9). The word is reserved today.
-
-```nz error="`protected` is reserved for a future feature"
-package main;
-
-class C {
-    protected int X;
-}
-
-void Main(string[] args) { }
-```
-
-**Status:** Planned.
-**Differs from C#:** Same as C# once inheritance exists.
-
-### 2.6 `file`, `protected internal`, `private protected`
-
-**Status:** Later.
-**Differs from C#:** not accepted.
+A constructor cannot be more visible than its type, so the example above is refused.
 
 ---
 
@@ -326,8 +240,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** an object has one owner and is moved, not shared by reference; there is no garbage collector.
+An object has one owner and is moved, not shared by reference; there is no garbage collector.
 
 ### 3.2 `struct`
 
@@ -358,8 +271,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** a struct that owns an object moves instead of being copied (a copy would give the object two owners).
+A struct that owns an object moves instead of being copied (a copy would give the object two owners).
 
 ### 3.3 `record class` and `record struct`
 
@@ -383,19 +295,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Partial. Value equality (`==`), the generated `ToString`, and `with` are missing (see 3.4).
-**Differs from C#:** a record class has one owner like any class.
-
-### 3.4 Record equality, `ToString` and `with`
-
-C# generates value equality and a `ToString` for records, and `r with { X = 5 }` copies a record with some members changed.
-
-```text
-var b = a with { X = 5 };
-```
-
-**Status:** Planned. `==` on records will be refused until value equality is built; `with` on a record that owns objects will move the source into the copy.
-**Differs from C#:** today `with` is not accepted.
+A record class has one owner like any class.
 
 ### 3.5 `enum`
 
@@ -414,8 +314,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** `[Flags]` and `HasFlag` do not exist yet (see 11.4); `Enum.GetValues` and the other members of `Enum` come with reflection (section 15).
+`[Flags]` and `HasFlag` do not exist yet (see 11.4); `Enum.GetValues` and the other members of `Enum` come with reflection (section 15).
 
 ### 3.6 `union`
 
@@ -448,8 +347,7 @@ void Main(string[] args) {
 
 A union may be generic, and may have methods. `Result<T, E>` is a union of the standard library (see [Error Handling](Error-Handling.md)).
 
-**Status:** Available. Properties and constants in a union body, `==`, and a text form are missing.
-**Differs from C#:** C# 14 has no unions; NZ follows the shape proposed for C# 15. A value that converts to two cases is refused, where C# 15 would pick one.
+A value that converts to two cases is refused.
 
 ### 3.7 `interface`
 
@@ -466,15 +364,7 @@ interface IShape {
 void Main(string[] args) { }
 ```
 
-**Status:** Partial. Implementing an interface, default members, interface inheritance and generic constraints are Planned (section 8).
-**Differs from C#:** see section 8.
-
-### 3.8 `delegate`
-
-`delegate int Op(int a, int b);` declares a named function type. See section 10.
-
-**Status:** Planned.
-**Differs from C#:** see 10.3.
+See section 8.
 
 ### 3.9 Type aliases: `type`
 
@@ -498,8 +388,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** C# writes `using Id = int;` and has no generic aliases; NZ uses `type` because `using` is the resource statement.
+NZ writes `type` for an alias, because `using` is the resource statement. Generic aliases are allowed.
 
 ### 3.10 `static class`
 
@@ -522,8 +411,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available. A static class nested in another type is not supported yet.
-**Differs from C#:** extension methods are declared as top-level functions, not inside a static class (see 6.8).
+Extension methods are declared as top-level functions, not inside a static class (see 6.8).
 
 ### 3.11 Nested types
 
@@ -549,42 +437,13 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Partial. A type nested in an interface, a `static` nested class, an enum nested in a generic type, and static members of a type nested in a generic type are not supported yet.
-**Differs from C#:** an `import` names top-level types only: import `Shape`, then write `Shape.Point`.
-
-### 3.12 `partial`
-
-`partial class C` splits one type over several declarations.
-
-**Status:** Later.
-**Differs from C#:** not accepted.
-
-### 3.13 `abstract`, `sealed`, `virtual`, `override`, `new` (modifier)
-
-These belong to class inheritance (section 9). The words are reserved today.
-
-```nz error="`abstract` is reserved for a future feature"
-package main;
-
-abstract class Shape { }
-
-void Main(string[] args) { }
-```
-
-**Status:** Planned.
-**Differs from C#:** Same as C# once inheritance exists; classes stay open by default.
-
-### 3.14 `readonly struct` and `ref struct`
-
-**Status:** Later.
-**Differs from C#:** not accepted. A `Span<T>` is a borrowed view that already obeys the rules of a `ref struct` (see Part 1).
+An `import` names top-level types only: import `Shape`, then write `Shape.Point`.
 
 ### 3.15 Generic types
 
 Classes, structs, records, unions, interfaces and aliases take type parameters: `class Box<T> { ... }`. See section 7.
 
-**Status:** Available.
-**Differs from C#:** generic code is compiled once per type argument (as C++ templates or Rust generics).
+Generic code is compiled once per type argument.
 
 ---
 
@@ -623,8 +482,7 @@ class User {
 void Main(string[] args) { }
 ```
 
-**Status:** Available. A non-optional `string` field without an initializer is `""`.
-**Differs from C#:** C# gives every field a default (`null` for a string or class); in NZ a `string` field is `""`, and a class field that could be `null` without being optional is refused.
+A `string` field is `""`, and a class field that could be `null` without being optional is refused.
 
 ### 4.2 `const`
 
@@ -653,8 +511,7 @@ const double Pi = 3.14;
 void Main(string[] args) { }
 ```
 
-**Status:** Partial. `float`, `double` and `char` constants are not supported: use `static readonly`.
-**Differs from C#:** C# also allows `float`, `double`, `decimal` and `char` constants.
+`float`, `double`, `decimal` and `char` are not accepted as constant types.
 
 ### 4.3 `readonly` fields
 
@@ -678,8 +535,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** Same as C#. `readonly` locals do not exist (as in C#).
+`readonly` locals do not exist.
 
 ### 4.4 `static` fields and methods
 
@@ -714,8 +570,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Partial. Static members of generic types, static properties, and static members of interfaces are not supported yet.
-**Differs from C#:** a mutable static needs `unsafe` (NZ only), and a static is never reached through an object.
+A mutable static needs `unsafe` (NZ only), and a static is never reached through an object.
 
 ### 4.5 Methods
 
@@ -743,26 +598,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** a method that changes the object needs a changeable receiver (a variable, or a `ref` borrow); through an `in` borrow it is refused.
-
-### 4.6 Method overloading
-
-Two methods (or top-level functions) with one name and different parameters.
-
-```nz error="duplicate member `F` in `M`"
-package main;
-
-class M {
-    public int F(int x) => x;
-    public string F(string s) => s;
-}
-
-void Main(string[] args) { }
-```
-
-**Status:** Later. Constructors, indexers and operators can be overloaded today.
-**Differs from C#:** give the methods different names for now.
+A method that changes the object needs a changeable receiver (a variable, or a `ref` borrow); through an `in` borrow it is refused.
 
 ### 4.7 Expression-bodied members
 
@@ -786,8 +622,6 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** Same as C#.
 
 ### 4.8 Auto-properties
 
@@ -819,8 +653,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** a struct auto-property is a variable, so `c.P.X = 1` changes it, where C# refuses it (CS1612).
+A struct auto-property is a variable, so `c.P.X = 1` changes it.
 
 ### 4.9 Computed properties
 
@@ -849,26 +682,6 @@ void Main(string[] args) {
     Console.WriteLine($"{f} {t.Celsius}");
 }
 ```
-
-**Status:** Partial. A computed property in an object initializer, in a property pattern, or marked `required`, the value of an assignment through it inside a larger expression, and accessor bodies in an interface are not supported yet.
-**Differs from C#:** Same as C# where supported.
-
-### 4.10 The `field` keyword
-
-C# 14 lets an accessor body use `field`, the hidden storage of the property.
-
-```nz error="unknown name `field`"
-package main;
-
-class C {
-    public int P { get => field; set => field = value; }
-}
-
-void Main(string[] args) { }
-```
-
-**Status:** Later.
-**Differs from C#:** declare the storage field yourself.
 
 ### 4.11 `required` and `init`
 
@@ -902,9 +715,6 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** Same as C# (C# 11).
-
 ### 4.12 Indexers
 
 `T this[P p] { get { ... } set { ... } }` lets a type be indexed like an array. The accessors need bodies, and the indexer is written `public` or `private`.
@@ -932,8 +742,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Partial. Indexers with several parameters and auto-implemented indexers are not supported yet; a user indexer does not make a type usable in `foreach`.
-**Differs from C#:** the visibility keyword is required on an indexer.
+The visibility keyword is required on an indexer.
 
 ### 4.13 Operator overloading
 
@@ -967,50 +776,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Partial. Operators of a generic type, operators in an interface, `true`/`false` operators, and using the value of a user `++` or `--` inside an expression are not supported yet.
-**Differs from C#:** the operands are lent with `in` and never moved; the result is a new value.
-
-### 4.14 Conversion operators
-
-`public static implicit operator double(Meters m)` and `explicit operator` declare conversions.
-
-```nz error="operator `double` cannot be overloaded"
-package main;
-
-struct Meters {
-    public double V;
-    public static implicit operator double(Meters m) => m.V;
-}
-
-void Main(string[] args) { }
-```
-
-**Status:** Planned. The operand will be lent with `in` and the result will be a new value, as for the other operators.
-**Differs from C#:** Same as C# once it exists.
-
-### 4.15 Events
-
-`public event EventHandler? Click;` declares an event. See 10.4.
-
-**Status:** Planned.
-**Differs from C#:** see 10.4.
-
-### 4.16 Finalizers
-
-A finalizer `~C() { ... }` is not part of NZ. An object is freed at a known point (when its owner goes out of scope), and the cleanup hook is `IDisposable.Dispose`, which runs every time a value is dropped (see 17.7).
-
-```nz error="expected identifier, found Tilde"
-package main;
-
-class C {
-    ~C() { }
-}
-
-void Main(string[] args) { }
-```
-
-**Status:** Not planned. A message pointing to `IDisposable` is Planned.
-**Differs from C#:** C# runs finalizers from its garbage collector, at an unknown time; NZ has no garbage collector.
+The operands are lent with `in` and never moved; the result is a new value.
 
 ---
 
@@ -1045,28 +811,12 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** a field without a default must be assigned on every path of every constructor that does not chain (C# would leave it `null`).
+A field without a default must be assigned on every path of every constructor that does not chain.
 
 ### 5.2 Chaining with `: this(...)`
 
 `: this(...)` runs another constructor of the same type first (see the example in 5.1). Its arguments may use the parameters and constants, but no member of the object.
 
-**Status:** Available.
-**Differs from C#:** Same as C#.
-
-### 5.3 Chaining with `: base(...)`
-
-`: base(...)` runs a constructor of the base class. It comes with inheritance (section 9).
-
-```text
-class Puppy : Dog {
-    public Puppy(string name) : base(name) { }
-}
-```
-
-**Status:** Planned.
-**Differs from C#:** Same as C# once inheritance exists.
 
 ### 5.4 Primary constructors
 
@@ -1088,9 +838,6 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Partial. Using a primary-constructor parameter in a method body is not supported yet: store it in a field.
-**Differs from C#:** Same as C# 12 where supported.
-
 ### 5.5 Object initializers
 
 `new T(args) { A = a, B = b }` sets fields and settable properties after the constructor ran, in the order written.
@@ -1111,32 +858,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** Same as C#. The order at creation is: arguments, field initializers, constructor bodies, object initializer.
-
-### 5.6 Target-typed `new()`
-
-`Point p = new();` takes the type from the target.
-
-**Status:** Later.
-**Differs from C#:** write the type: `var p = new Point();`.
-
-### 5.7 Static constructors
-
-`static C() { ... }` runs once to set up the statics of a type.
-
-```nz error="`static` is not supported here"
-package main;
-
-class C {
-    static C() { }
-}
-
-void Main(string[] args) { }
-```
-
-**Status:** Planned. Static constructors and computed static initializers will run **before `Main`**, in dependency order, and owned statics are dropped at exit in reverse order.
-**Differs from C#:** C# runs a static constructor lazily, on first use; NZ will run it eagerly, so its side effects happen at a different time.
+The order at creation is: arguments, field initializers, constructor bodies, object initializer.
 
 ---
 
@@ -1162,8 +884,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** passing an object moves it; in C# both sides keep a reference.
+Passing an object moves it; the caller no longer holds it.
 
 ### 6.2 `in` and `ref` parameters
 
@@ -1194,18 +915,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** C# writes `ref` (and optionally `in`) at the call; NZ does not accept a keyword there. `in` is NZ's borrow of an owned value (see [Ownership](Ownership.md)).
-
-### 6.3 `out` parameters
-
-```text
-bool ok = int.TryParse(s, out int n);
-void Split(string s, out string head, out string tail) { ... }
-```
-
-**Status:** Planned, together with `out`-style overloads of the standard library (`int.TryParse(s, out int n)`, `d.TryGetValue(k, out var v)`).
-**Differs from C#:** today a tuple result or a `T?` result does the job: `int? n = int.TryParse(s);`.
+NZ does not accept a keyword at the call. `in` is NZ's borrow of an owned value (see [Ownership](Ownership.md)).
 
 ### 6.4 `params`
 
@@ -1233,8 +943,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** Same as C# 13. `params Span<T>` uses a temporary array freed at the end of the statement.
+`params Span<T>` uses a temporary array freed at the end of the statement.
 
 ### 6.5 Default values and named arguments
 
@@ -1252,27 +961,6 @@ void Main(string[] args) {
     Console.WriteLine(Greet(times: 2, name: "Bob"));
 }
 ```
-
-**Status:** Partial. A struct or class parameter has no default yet, and named arguments on standard-library members and on `Abort`/`Assert` are not supported yet.
-**Differs from C#:** Same as C# where supported.
-
-### 6.6 `ref readonly` and `scoped` parameters
-
-**Status:** Later.
-**Differs from C#:** not accepted. NZ's `in` is already a read-only borrow that cannot escape the call.
-
-### 6.7 `ref` returns and `ref` locals
-
-`ref T Peek()` returns a reference to an element; `ref var x = ref a[i];` names one. They will follow C#, with NZ's loan rule: the reference must end before the collection or its owner can change.
-
-```text
-ref Token Peek() => ref tokens[pos];
-ref readonly Token Current() => ref tokens[pos];
-ref var t = ref tokens[0];
-```
-
-**Status:** Planned.
-**Differs from C#:** the loan rule is NZ's; today `var t = list[i];` on a class element is already a borrowed, read-only alias.
 
 ### 6.8 Extension methods
 
@@ -1311,15 +999,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Partial. `x?.F()` with an extension, extensions on type names, and two extensions with one name are not supported yet.
-**Differs from C#:** C# declares extension methods inside a `static class`; NZ declares them at the top level.
-
-### 6.9 Extension blocks
-
-C# 14's `extension(T x) { ... }` block, with extension properties.
-
-**Status:** Later.
-**Differs from C#:** use extension methods (6.8).
+NZ declares extension methods at the top level.
 
 ---
 
@@ -1353,47 +1033,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** generic code is compiled once per type argument. `F<int>` without a call is an error.
-
-### 7.2 Constraints: `where`
-
-`where T : IComparable<T>`, `where T : class`, `where T : struct`, `where T : new()` limit what a type argument can be, and let generic code call the members the constraint promises.
-
-```text
-T Max<T>(T a, T b) where T : IComparable<T> => a.CompareTo(b) >= 0 ? a : b;
-T Make<T>() where T : new() => new T();
-```
-
-**Status:** Planned (soon). Today `where` is reserved, and `default(T)` is refused because it needs a constraint.
-**Differs from C#:** Same as C# once it lands.
-
-### 7.3 Variance: `in` and `out` on type parameters
-
-`interface IProducer<out T>` and `delegate void Sink<in T>(T x)`.
-
-**Status:** Planned. Only read-only views will convert (an `IEnumerable<Dog>` to an `IEnumerable<Animal>`); mutable arrays and lists will not.
-**Differs from C#:** C# also converts arrays covariantly (with a run-time check); NZ will not.
-
-### 7.4 Static members of generic types
-
-```nz error="not supported yet: a static member of a generic type"
-package main;
-
-class Box<T> {
-    public static int Count() => 0;
-}
-
-void Main(string[] args) { }
-```
-
-**Status:** Later.
-**Differs from C#:** use a top-level function.
-
-### 7.5 Generic local functions
-
-**Status:** Later.
-**Differs from C#:** a local function may use the type parameters of the function around it, but not declare its own.
+Generic code is compiled once per type argument. `F<int>` without a call is an error.
 
 ---
 
@@ -1403,126 +1043,9 @@ void Main(string[] args) { }
 
 Members of an interface are methods without bodies (and property signatures). An interface may be generic. See the example in 3.7.
 
-**Status:** Available.
-**Differs from C#:** Same as C# for what is accepted.
-
-### 8.2 Implementing an interface
-
-```text
-interface IShape {
-    int Area();
-}
-
-class Square : IShape {
-    public int Side = 3;
-    public int Area() => Side * Side;
-}
-```
-
-An interface value will own its object (moving it in), and a borrowed interface value (`in IShape`) will lend it. A struct will reach interface members through generic constraints only, never in an interface value.
-
-**Status:** Planned (soon).
-**Differs from C#:** the ownership of an interface value is NZ's; `==` on interface values will be refused.
-
-### 8.3 Default interface members
-
-`string Describe() => Speak();` inside an interface gives a body that implementing types inherit.
-
-```nz error="default interface members are not supported yet"
-package main;
-
-interface IShape {
-    string Name() => "shape";
-}
-
-void Main(string[] args) { }
-```
-
-**Status:** Planned (soon).
-**Differs from C#:** Same as C# once it lands.
-
-### 8.4 Interface inheritance
-
-`interface IB : IA { ... }`.
-
-**Status:** Planned (soon).
-**Differs from C#:** Same as C#.
-
-### 8.5 `readonly` interface members
-
-`readonly int Size();` in an interface: only `readonly` members can be called through an `in` interface value, and an implementation must not change the object.
-
-**Status:** Planned (soon). NZ only.
-**Differs from C#:** C# has no `readonly` interface members; NZ needs the marker to know which calls a read-only borrow allows.
-
-### 8.6 Explicit interface implementation
-
-`int IShape.Area() => ...;` makes a member reachable only through the interface.
-
-**Status:** Planned.
-**Differs from C#:** Same as C#.
-
-### 8.7 Static and static abstract interface members
-
-**Status:** Later.
-**Differs from C#:** not accepted.
-
 ---
 
 ## 9. Inheritance
-
-### 9.1 Base classes
-
-`class Dog : Animal, IPet` declares one base class and any number of interfaces. Structs do not inherit; they implement interfaces.
-
-```text
-class Animal {
-    public virtual string Speak() => "...";
-}
-
-class Dog : Animal {
-    public override string Speak() => "Woof";
-}
-```
-
-**Status:** Planned.
-**Differs from C#:** there is no common root class (no `object` base with members for every class); an owner of a `Dog` moves into an owner of an `Animal`.
-
-### 9.2 `virtual`, `override`, `abstract`, `sealed`, `new`
-
-A `virtual` member may be replaced in a derived class with `override`; an `abstract` member has no body and makes its class abstract; `sealed` stops further derivation; `new` hides a base member.
-
-**Status:** Planned.
-**Differs from C#:** Same as C#. A missing `new` will be a warning, as in C#.
-
-### 9.3 `base` access
-
-`base.M()` calls the base class's version of a member.
-
-**Status:** Planned.
-**Differs from C#:** Same as C#.
-
-### 9.4 Casts between classes and `as`
-
-`animal as Dog` gives a `Dog?`; `(Dog)animal` moves the object into a `Dog` and throws `InvalidCastException` when it is not one.
-
-**Status:** Planned (after inheritance and exceptions).
-**Differs from C#:** the operand of a successful cast is moved.
-
-### 9.5 `object`
-
-A minimal `object` that can only be borrowed: `==`, `ReferenceEquals` and `GetType()`; no boxing of values.
-
-```nz error="unknown type `object`"
-package main;
-
-void Main(string[] args) {
-    object o = 1;
-}
-```
-
-**Status:** Planned (minimal). Boxing of values is not planned.
-**Differs from C#:** an `int` never converts to `object`.
 
 ---
 
@@ -1546,50 +1069,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available. A local function cannot change a variable it captures yet, and cannot be generic.
-**Differs from C#:** an uppercase name gives a warning (a local function is never visible outside its block).
-
-### 10.2 Lambdas, `Func` and `Action`
-
-```text
-Func<int, int> square = x => x * x;
-Action<string> log = s => Console.WriteLine(s);
-int i = list.FindIndex(x => x > 5);
-```
-
-A lambda passed to a call borrows what it captures for that call, and may change it. A lambda that is stored or returned **copies or moves** what it captures when it is made, and its captures are read-only.
-
-**Status:** Planned.
-**Differs from C#:** a stored lambda copies its captures (C# shares the variable); a program where that would print something different from C# will be refused.
-
-### 10.3 `delegate` types
-
-```text
-delegate int Op(int a, int b);
-Op add = (a, b) => a + b;
-```
-
-**Status:** Planned. Delegate values will be copied freely; `+=`, `-=` and `==` will follow C#.
-**Differs from C#:** there will be no `Delegate` or `MulticastDelegate` type to name.
-
-### 10.4 Events
-
-```text
-class Button {
-    public event EventHandler? Click;
-    public void Press() => Click?.Invoke(this, EventArgs.Empty);
-}
-
-button.Click += (sender, e) => Console.WriteLine("pressed");
-```
-
-**Status:** Planned.
-**Differs from C#:** a handler stored on an owned object cannot keep a borrow of it; shared state goes through `Shared<T>` (see 17.3).
-
-### 10.5 Function pointers: `delegate*`
-
-**Status:** Later.
-**Differs from C#:** refused with "not supported yet: function pointers".
+An uppercase name gives a warning (a local function is never visible outside its block).
 
 ---
 
@@ -1612,8 +1092,7 @@ class UsersController {
 void Main(string[] args) { }
 ```
 
-**Status:** Available. An attribute the compiler does not know gives a warning ("unknown attribute") and has no effect yet.
-**Differs from C#:** attributes on parameters, local functions and enum members are not accepted yet.
+Attributes on parameters, local functions and enum members are not accepted yet.
 
 ### 11.2 `[Test]`
 
@@ -1632,40 +1111,13 @@ void AddsNumbers() {
 void Main(string[] args) { }
 ```
 
-**Status:** Available. NZ only.
-**Differs from C#:** C# has no built-in test attribute (test frameworks bring their own).
+`[Test]` is built in; no test framework is needed.
 
 ### 11.3 Interop attributes
 
 `[DllImport]`, `[UnmanagedCallersOnly]`, `[StructLayout]` and `[FieldOffset]` from `std.interop`. See section 16.
 
-**Status:** Available (`[FieldOffset]` is Later).
-**Differs from C#:** see section 16.
-
-### 11.4 `[Flags]`
-
-```nz output="3\n"
-package main;
-
-import std.io.Console;
-
-enum Perm { None = 0, Read = 1, Write = 2 }
-
-void Main(string[] args) {
-    var p = Perm.Read | Perm.Write;
-    Console.WriteLine($"{(int)p}");
-}
-```
-
-**Status:** Planned. Today `[Flags]` is an unknown attribute: a combined value prints as its number, not as `Read, Write`.
-**Differs from C#:** see Status.
-
-### 11.5 `[Obsolete]` and other .NET attributes
-
-`[Obsolete("use G")]` will warn at every use. A fixed list of other .NET attributes (`[Serializable]`, `[DebuggerDisplay]`, `[MethodImpl]` and others) will be accepted and documented as having no effect.
-
-**Status:** Planned. Today they are unknown attributes (a warning).
-**Differs from C#:** Same as C# for `[Obsolete]`.
+See section 16.
 
 ### 11.6 User-defined attributes
 
@@ -1679,134 +1131,17 @@ class TagAttribute : Attribute {
 class User { }
 ```
 
-**Status:** Partial. The use `[Tag("model")]` parses and is kept (with a warning); declaring the attribute class needs inheritance, and reading it needs reflection. Both are Planned, following C# 14 (`[AttributeUsage]` included).
-**Differs from C#:** Same as C# once it lands.
-
-### 11.7 Attribute targets: `[return: ...]`, `[assembly: ...]`, `[module: ...]`
-
-```nz error="attribute targets are not supported yet"
-package main;
-
-[return: Tag]
-string Name() { return "n"; }
-
-void Main(string[] args) { }
-```
-
-**Status:** Planned. `assembly:` will mean the program and `module:` the package.
-**Differs from C#:** today every target is refused.
-
 ---
 
 ## 12. Preprocessor directives
-
-### 12.1 `#if`, `#elif`, `#else`, `#endif`, `#define`, `#undef`
-
-Conditional compilation. The predefined symbols will be `DEBUG` and `TRACE` (or `RELEASE` and `TRACE` with `--release`), and `NZ_NO_RUNTIME` with `--no-runtime`.
-
-```nz error="unexpected character"
-package main;
-
-#define FAST
-#if FAST
-void Main(string[] args) { }
-#endif
-```
-
-**Status:** Planned.
-**Differs from C#:** the symbol `NZ_NO_RUNTIME` is NZ only.
-
-### 12.2 `#region` and `#endregion`
-
-**Status:** Planned.
-**Differs from C#:** Same as C# (no effect on the program).
-
-### 12.3 `#pragma warning`
-
-`#pragma warning disable CS0618` turns warnings off and on.
-
-**Status:** Planned. It will take NZ's own codes, and a fixed list of the C# codes that NZ mirrors.
-**Differs from C#:** only the mirrored C# codes are known.
-
-### 12.4 `#nullable`
-
-**Status:** Planned. `#nullable enable` and `#nullable restore` will be accepted silently (NZ's null safety is always on); `#nullable disable` will be accepted with a warning that it has no effect.
-**Differs from C#:** null safety cannot be turned off.
-
-### 12.5 `#error`, `#warning`, `#line`
-
-**Status:** Planned (`#error` and `#warning`); Later (`#line`).
-**Differs from C#:** Same as C# once they land.
 
 ---
 
 ## 13. Async code and iterators
 
-### 13.1 `async`, `await`, `Task` and `Task<T>`
-
-```text
-async Task<string> LoadAsync(string path) {
-    string text = await File.ReadAllTextAsync(path);
-    return text.Trim();
-}
-```
-
-All async methods will run on one main loop, in order; only `Task.Run` will use worker threads. Tasks still running when `Main` returns will be cancelled, running their drops.
-
-```nz error="`async` is reserved for a future feature"
-package main;
-
-async Task<int> F() { return 1; }
-
-void Main(string[] args) { }
-```
-
-**Status:** Planned.
-**Differs from C#:** the threading model is fixed (one main loop); a value moved to a worker thread must be safe to send, checked by the compiler.
-
-### 13.2 `async void`, `ValueTask`, `await using`
-
-**Status:** Planned. `async void` will be allowed only for event handlers; `ValueTask` will work as `Task`; `await using` with `IAsyncDisposable`.
-**Differs from C#:** `async void` elsewhere will be refused.
-
-### 13.3 Iterators: `yield return`
-
-```text
-IEnumerable<int> Count(int n) {
-    for (int i = 0; i < n; i++) {
-        yield return i;
-    }
-}
-```
-
-**Status:** Planned. A `foreach` over an iterator will receive each value moved to the loop variable.
-**Differs from C#:** Same as C# once it lands.
-
-### 13.4 Async iterators: `IAsyncEnumerable<T>`, `await foreach`
-
-**Status:** Later.
-**Differs from C#:** not accepted.
-
-### 13.5 `lock` and `Mutex<T>`
-
-```text
-var counter = new Arc<Mutex<int>>(new Mutex<int>(0));
-lock (counter) { ... }
-```
-
-**Status:** Planned. NZ only: `Mutex<T>` owns the data it protects, and `lock (m)` gives write access to it inside the block. `lock (this)` on an arbitrary object will be refused.
-**Differs from C#:** C# locks any object; NZ locks a `Mutex<T>`.
-
 ---
 
 ## 14. Exceptions
-
-### 14.1 Exception types
-
-Exception classes with the .NET names (`Exception`, `InvalidOperationException`, `FormatException`, `FileNotFoundException` and others), and user exception classes derived from `Exception`.
-
-**Status:** Planned. User exception classes need inheritance (section 9).
-**Differs from C#:** an exception object has one owner: `throw` moves it and `catch` owns it.
 
 ### 14.2 `throw`, `try`, `catch`, `finally`
 
@@ -1820,7 +1155,7 @@ try {
 }
 ```
 
-The statements are described in [Part 1](Syntax-Reference.md). An exception that nothing catches stops the program with `nz: <Type>: <message>` and exit status 1, without running `finally`, as .NET does.
+The statements are described in [Part 1](Syntax-Reference.md). An exception that nothing catches stops the program with `nz: <Type>: <message>` and exit status 1, without running `finally`.
 
 ```nz output="done\n"
 package main;
@@ -1831,15 +1166,13 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Partial: `try`/`finally` works; `catch` and `throw` parse and are refused as "not supported yet" until exception classes exist.
-**Differs from C#:** run-time checks (index out of range, overflow, a failed `Assert`) will throw the .NET exception; some failures stay stops that cannot be caught: `Abort`, `Environment.Exit`, stack overflow, out of memory.
+Some failures stop the program and cannot be caught: `Abort`, `Environment.Exit`, stack overflow, out of memory.
 
 ### 14.3 Failures today
 
 Today a failure stops the program (`Abort`, `Assert`, run-time checks), and an expected failure is a value: `Result<T, E>` with the `?` operator, and the `Try*` members of the standard library. These stay when exceptions arrive. See [Error Handling](Error-Handling.md).
 
-**Status:** Available.
-**Differs from C#:** `Result<T, E>` and `?` are NZ only.
+`Result<T, E>` and `?` are NZ only.
 
 ---
 
@@ -1861,46 +1194,6 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available.
-**Differs from C#:** Same as C#.
-
-### 15.2 `typeof`, `GetType()` and `Type`
-
-`typeof(Dog)` and `d.GetType()` give a `Type`: its `Name`, `FullName`, and a list of its members (names, types and attributes, no values). `Type.Name` follows .NET's spelling (`Int32`, ``List`1``), and `FullName` uses the package (`zoo.Dog`).
-
-```nz error="`Dog` has no member `GetType`"
-package main;
-
-class Dog { }
-
-void Main(string[] args) {
-    var d = new Dog();
-    string n = d.GetType().Name;
-}
-```
-
-**Status:** Planned. Only types a program asks about carry the extra data. `GetValue` and `Invoke` are not planned for now.
-**Differs from C#:** a smaller `System.Reflection`.
-
-### 15.3 Reading attributes
-
-`GetCustomAttribute<T>()` returns a `T?`, and `GetCustomAttributes()` an `Attribute[]`.
-
-**Status:** Planned.
-**Differs from C#:** the typed forms only (no `object[]`).
-
-### 15.4 `dynamic`
-
-```nz error="unknown type `dynamic`"
-package main;
-
-void Main(string[] args) {
-    dynamic o = 1;
-}
-```
-
-**Status:** Later.
-**Differs from C#:** not accepted.
 
 ---
 
@@ -1910,8 +1203,7 @@ void Main(string[] args) {
 
 `unsafe { ... }`, or `unsafe` on a function, method, class or struct, turns on pointers, `stackalloc`, `fixed`, `NativeMemory`, calls to C functions and mutable statics. Types, null safety, overflow checks, bounds checks on arrays and lists, and ownership stay checked inside.
 
-**Status:** Available.
-**Differs from C#:** a call to an `extern` function always needs `unsafe`, and so does a mutable static.
+A call to an `extern` function always needs `unsafe`, and so does a mutable static.
 
 ### 16.2 Pointers, `&` and `stackalloc`
 
@@ -1934,8 +1226,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available. A variable `stackalloc` length, and `stackalloc` into a `Span<T>`, are not supported yet.
-**Differs from C#:** a pointer cannot point to an optional or a tuple; `char` is 4 bytes.
+A pointer cannot point to an optional or a tuple; `char` is 4 bytes.
 
 ### 16.3 `fixed`
 
@@ -1957,8 +1248,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available. `fixed` on a `string` is not supported yet.
-**Differs from C#:** NZ strings are UTF-8, not UTF-16.
+NZ strings are UTF-8.
 
 ### 16.4 `NativeMemory`
 
@@ -1979,9 +1269,6 @@ void Main(string[] args) {
     }
 }
 ```
-
-**Status:** Available.
-**Differs from C#:** Same as C#'s API.
 
 ### 16.5 `[StructLayout]`
 
@@ -2006,8 +1293,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Partial. `LayoutKind.Explicit`, `[FieldOffset]` and `LayoutKind.Auto` are Later.
-**Differs from C#:** `char` cannot be a field of a laid-out struct.
+`char` cannot be a field of a laid-out struct.
 
 ### 16.6 `extern` and `[DllImport]`
 
@@ -2029,8 +1315,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available. `CallingConvention`, `CharSet`, `[LibraryImport]` and C varargs are not supported yet.
-**Differs from C#:** the function is top-level (no `static`), the library is a plain name, and every call needs `unsafe`.
+The function is top-level (no `static`), the library is a plain name, and every call needs `unsafe`.
 
 ### 16.7 `[UnmanagedCallersOnly]`
 
@@ -2049,40 +1334,27 @@ int AddI32(int a, int b) {
 void Main(string[] args) { }
 ```
 
-**Status:** Available.
-**Differs from C#:** `EntryPoint` is required; no `ref` or `in` parameters.
+`EntryPoint` is required; no `ref` or `in` parameters.
 
 ### 16.8 `--no-runtime`
 
 `nzc build --no-runtime` builds without NZ's runtime: numbers, `bool`, `char`, enums, structs, pointers, statics, `extern`, `NativeMemory` and `stackalloc` remain; strings, classes, arrays and lists are refused.
 
-**Status:** Available. NZ only.
-**Differs from C#:** C# has no such mode.
-
-### 16.9 `volatile`
-
-**Status:** Later.
-**Differs from C#:** not accepted.
-
 ---
 
 ## 17. Ownership and memory (NZ only)
 
-The rules of this section have no C# equivalent: NZ has no garbage collector. [Ownership](Ownership.md) and [Memory Model](Memory-Model.md) describe them in full.
+NZ has no garbage collector. [Ownership](Ownership.md) and [Memory Model](Memory-Model.md) describe them in full.
 
 ### 17.1 One owner, moves
 
 A class object, a list and an array have exactly one owner. Assigning or passing one without a modifier moves it (see 6.1); the old variable cannot be used until it gets a new value.
 
-**Status:** Available. NZ only.
-**Differs from C#:** in C# every variable holds a shared reference.
-
 ### 17.2 Borrowing: `in` and `ref`
 
 `in` lends an owned value for reading and `ref` lends it to be changed, for the length of the call (see 6.2). A borrow is never stored.
 
-**Status:** Available. NZ only (the keywords are C#'s).
-**Differs from C#:** see 6.2.
+See 6.2.
 
 ### 17.3 `Shared<T>` and `WeakReference<T>`
 
@@ -2111,8 +1383,7 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available. NZ only.
-**Differs from C#:** `WeakReference<T>` is .NET's name, but it points to a `Shared<T>` object here.
+`WeakReference<T>` points to a `Shared<T>` object.
 
 ### 17.4 `Arc<T>`
 
@@ -2135,15 +1406,11 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available. NZ only.
-**Differs from C#:** no equivalent.
-
 ### 17.5 Drop order
 
 An owned value is dropped when its owner goes out of scope: locals in reverse order of declaration. When an object is dropped, the object is freed first, then its fields in declaration order. A program never sees a dropped value.
 
-**Status:** Available. NZ only.
-**Differs from C#:** C# frees objects when its garbage collector runs, in no fixed order.
+Objects are freed when their owner is dropped, in the order above.
 
 ### 17.6 `defer` and `using`
 
@@ -2169,33 +1436,363 @@ void Main(string[] args) {
 }
 ```
 
-**Status:** Available (`defer`, NZ only); Partial (`using`: it accepts any value today; with `IDisposable` it will accept only an `IDisposable` value, as C# does).
-**Differs from C#:** `defer` has no C# equivalent. `using (x) { }` on an existing variable is not accepted yet; when it is, the block will own `x`, so `x` cannot be used after the block (C# keeps it usable).
-
-### 17.7 `IDisposable` and `Dispose`
-
-A class that implements `IDisposable` has its `Dispose()` called **every time a value of it is dropped**, so cleanup runs at a known point without a `using`. A program may call `x.Dispose()` itself on a variable it owns; the call consumes the variable.
-
-```text
-class File : IDisposable {
-    public void Dispose() { /* close the handle */ }
-}
-```
-
-**Status:** Planned (soon).
-**Differs from C#:** C# calls `Dispose` only through `using` or by hand; NZ calls it at every drop, and an explicit call moves the value.
+`defer` is NZ only. `using (x) { }` on an existing variable is not available yet.
 
 ---
 
-## 18. Not planned
+## 18. Index
 
-| Construct | Why |
+| Construct | Section |
 |---|---|
-| `namespace`, `using` directives | `package` and `import` replace them (1.8). |
-| Finalizers `~C()` | `IDisposable` runs at every drop (4.16). |
-| Query expressions (LINQ: `from x in xs select x`) | Not needed: loops and methods cover the use. |
-| Anonymous types (`new { X = 1 }`) | Tuples cover the use. |
-| Boxing values into `object` | No common root type; `object` will be minimal (9.5). |
+| Source file layout | [1.1](#11-source-file-layout) |
+| `package` | [1.2](#12-package) |
+| `import` (four forms) | [1.3](#13-import) |
+| Folders as packages | [1.4](#14-folders-as-packages) |
+| Entry point `Main` | [1.5](#15-entry-point-main) |
+| Top-level functions | [1.6](#16-top-level-functions) |
+| Top-level constants and statics | [1.7](#17-top-level-constants-and-statics) |
+| First-letter visibility rule | [2.1](#21-the-first-letter-rule-for-members) |
+| `public`, `private` | [2.2](#22-public-and-private) |
+| Visibility of types | [2.3](#23-visibility-of-types) |
+| `class` | [3.1](#31-class) |
+| `struct` | [3.2](#32-struct) |
+| `record class`, `record struct` | [3.3](#33-record-class-and-record-struct) |
+| `enum` | [3.5](#35-enum) |
+| `union` | [3.6](#36-union) |
+| `interface` (declaration) | [3.7](#37-interface) |
+| Type aliases `type` | [3.9](#39-type-aliases-type) |
+| `static class` | [3.10](#310-static-class) |
+| Nested types | [3.11](#311-nested-types) |
+| Generic types | [3.15](#315-generic-types) |
+| Fields | [4.1](#41-fields) |
+| `const` | [4.2](#42-const) |
+| `readonly` fields | [4.3](#43-readonly-fields) |
+| `static` fields and methods | [4.4](#44-static-fields-and-methods) |
+| Methods | [4.5](#45-methods) |
+| Expression-bodied members | [4.7](#47-expression-bodied-members) |
+| Auto-properties | [4.8](#48-auto-properties) |
+| Computed properties | [4.9](#49-computed-properties) |
+| `required`, `init` | [4.11](#411-required-and-init) |
+| Indexers | [4.12](#412-indexers) |
+| Operator overloading | [4.13](#413-operator-overloading) |
+| Constructors | [5.1](#51-constructors) |
+| `: this(...)` | [5.2](#52-chaining-with--this) |
+| Primary constructors | [5.4](#54-primary-constructors) |
+| Object initializers | [5.5](#55-object-initializers) |
+| Value parameters (moves) | [6.1](#61-value-parameters) |
+| `in`, `ref` parameters | [6.2](#62-in-and-ref-parameters) |
+| `params` | [6.4](#64-params) |
+| Default values, named arguments | [6.5](#65-default-values-and-named-arguments) |
+| Extension methods | [6.8](#68-extension-methods) |
+| Type parameters, generic methods, inference | [7.1](#71-type-parameters-generic-methods-and-inference) |
+| Interface declaration | [8.1](#81-declaring-an-interface) |
+| Local functions | [10.1](#101-local-functions) |
+| Attribute syntax | [11.1](#111-attribute-syntax) |
+| `[Test]` | [11.2](#112-test) |
+| Interop attributes | [11.3](#113-interop-attributes) |
+| User-defined attributes | [11.6](#116-user-defined-attributes) |
+| `Abort`, `Assert`, `Result` | [14.3](#143-failures-today) |
+| `nameof` | [15.1](#151-nameof) |
+| `unsafe` | [16.1](#161-unsafe) |
+| Pointers, `&`, `stackalloc` | [16.2](#162-pointers--and-stackalloc) |
+| `fixed` | [16.3](#163-fixed) |
+| `NativeMemory` | [16.4](#164-nativememory) |
+| `[StructLayout]` | [16.5](#165-structlayout) |
+| `extern`, `[DllImport]` | [16.6](#166-extern-and-dllimport) |
+| `[UnmanagedCallersOnly]` | [16.7](#167-unmanagedcallersonly) |
+| `--no-runtime` | [16.8](#168---no-runtime) |
+| One owner, moves | [17.1](#171-one-owner-moves) |
+| Borrowing `in`, `ref` | [17.2](#172-borrowing-in-and-ref) |
+| `Shared<T>`, `WeakReference<T>` | [17.3](#173-sharedt-and-weakreferencet) |
+| `Arc<T>` | [17.4](#174-arct) |
+| Drop order | [17.5](#175-drop-order) |
+| `defer` | [17.6](#176-defer-and-using) |
+| `using` | [17.6](#176-defer-and-using) |
+
+## Not available yet
+
+These constructs are not available in NZ:
+
+- Top-level statements
+- `internal`
+- `protected`
+- `file`, `protected internal`, `private protected`
+- Record equality, `ToString` and `with`
+- `delegate`
+- `partial`
+- `abstract`, `sealed`, `virtual`, `override`, `new` (modifier)
+- `readonly struct` and `ref struct`
+- Method overloading
+- The `field` keyword
+- Conversion operators
+- Events
+- Chaining with `: base(...)`
+- Target-typed `new()`
+- Static constructors
+- `out` parameters
+- `ref readonly` and `scoped` parameters
+- `ref` returns and `ref` locals
+- Extension blocks
+- Constraints: `where`
+- Variance: `in` and `out` on type parameters
+- Static members of generic types
+- Generic local functions
+- Implementing an interface
+- Default interface members
+- Interface inheritance
+- `readonly` interface members
+- Explicit interface implementation
+- Static and static abstract interface members
+- Base classes
+- `virtual`, `override`, `abstract`, `sealed`, `new`
+- `base` access
+- Casts between classes and `as`
+- `object`
+- Lambdas, `Func` and `Action`
+- `delegate` types
+- Events
+- Function pointers: `delegate*`
+- `[Flags]`
+- `[Obsolete]` and other predefined attributes
+- Attribute targets: `[return: ...]`, `[assembly: ...]`, `[module: ...]`
+- `#if`, `#elif`, `#else`, `#endif`, `#define`, `#undef`
+- `#region` and `#endregion`
+- `#pragma warning`
+- `#nullable`
+- `#error`, `#warning`, `#line`
+- `async`, `await`, `Task` and `Task<T>`
+- `async void`, `ValueTask`, `await using`
+- Iterators: `yield return`
+- Async iterators: `IAsyncEnumerable<T>`, `await foreach`
+- `lock` and `Mutex<T>`
+- Exception types
+- `typeof`, `GetType()` and `Type`
+- Reading attributes
+- `dynamic`
+- `volatile`
+- `IDisposable` and `Dispose`
+
+The compiler refuses them:
+
+**Top-level statements**
+
+```nz error="a function needs a return type"
+package main;
+
+import std.io.Console;
+
+Console.WriteLine("top");
+```
+
+**`protected`**
+
+```nz error="`protected` is reserved for a future feature"
+package main;
+
+class C {
+    protected int X;
+}
+
+void Main(string[] args) { }
+```
+
+**`abstract`, `sealed`, `virtual`, `override`, `new` (modifier)**
+
+```nz error="`abstract` is reserved for a future feature"
+package main;
+
+abstract class Shape { }
+
+void Main(string[] args) { }
+```
+
+**Method overloading**
+
+```nz error="duplicate member `F` in `M`"
+package main;
+
+class M {
+    public int F(int x) => x;
+    public string F(string s) => s;
+}
+
+void Main(string[] args) { }
+```
+
+**The `field` keyword**
+
+```nz error="unknown name `field`"
+package main;
+
+class C {
+    public int P { get => field; set => field = value; }
+}
+
+void Main(string[] args) { }
+```
+
+**Conversion operators**
+
+```nz error="operator `double` cannot be overloaded"
+package main;
+
+struct Meters {
+    public double V;
+    public static implicit operator double(Meters m) => m.V;
+}
+
+void Main(string[] args) { }
+```
+
+**Static constructors**
+
+```nz error="`static` is not supported here"
+package main;
+
+class C {
+    static C() { }
+}
+
+void Main(string[] args) { }
+```
+
+**Static members of generic types**
+
+```nz error="not supported yet: a static member of a generic type"
+package main;
+
+class Box<T> {
+    public static int Count() => 0;
+}
+
+void Main(string[] args) { }
+```
+
+**Default interface members**
+
+```nz error="default interface members are not supported yet"
+package main;
+
+interface IShape {
+    string Name() => "shape";
+}
+
+void Main(string[] args) { }
+```
+
+**`object`**
+
+```nz error="unknown type `object`"
+package main;
+
+void Main(string[] args) {
+    object o = 1;
+}
+```
+
+**`[Flags]`**
+
+```nz output="3\n"
+package main;
+
+import std.io.Console;
+
+enum Perm { None = 0, Read = 1, Write = 2 }
+
+void Main(string[] args) {
+    var p = Perm.Read | Perm.Write;
+    Console.WriteLine($"{(int)p}");
+}
+```
+
+**Attribute targets: `[return: ...]`, `[assembly: ...]`, `[module: ...]`**
+
+```nz error="attribute targets are not supported yet"
+package main;
+
+[return: Tag]
+string Name() { return "n"; }
+
+void Main(string[] args) { }
+```
+
+**`#if`, `#elif`, `#else`, `#endif`, `#define`, `#undef`**
+
+```nz error="unexpected character"
+package main;
+
+#define FAST
+#if FAST
+void Main(string[] args) { }
+#endif
+```
+
+**`async`, `await`, `Task` and `Task<T>`**
+
+```nz error="`async` is reserved for a future feature"
+package main;
+
+async Task<int> F() { return 1; }
+
+void Main(string[] args) { }
+```
+
+**`typeof`, `GetType()` and `Type`**
+
+```nz error="`Dog` has no member `GetType`"
+package main;
+
+class Dog { }
+
+void Main(string[] args) {
+    var d = new Dog();
+    string n = d.GetType().Name;
+}
+```
+
+**`dynamic`**
+
+```nz error="unknown type `dynamic`"
+package main;
+
+void Main(string[] args) {
+    dynamic o = 1;
+}
+```
+
+## Not supported
+
+NZ does not support these constructs:
+
+- `namespace` and `using` directives: `package` and `import` replace them (1.8).
+- Finalizers `~C()`: `IDisposable` runs at every drop (4.16).
+- Query expressions (`from x in xs select x`): loops and methods cover the use.
+- Anonymous types (`new { X = 1 }`): tuples cover the use.
+- Boxing values into `object`: there is no common root type, and `object` is not available.
+
+The compiler refuses `namespace`, finalizers and anonymous types:
+
+**`namespace` and `using` directives**
+
+```nz error="expected `package name;` at the start of the file"
+namespace App;
+
+void Main(string[] args) { }
+```
+
+**Finalizers**
+
+```nz error="expected identifier, found Tilde"
+package main;
+
+class C {
+    ~C() { }
+}
+
+void Main(string[] args) { }
+```
+
+**Anonymous types**
 
 ```nz error="expected identifier"
 package main;
@@ -2204,139 +1801,3 @@ void Main(string[] args) {
     var a = new { X = 1 };
 }
 ```
-
----
-
-## 19. Index
-
-| Construct | Section | Status |
-|---|---|---|
-| Source file layout | [1.1](#11-source-file-layout) | Available |
-| `package` | [1.2](#12-package) | Available |
-| `import` (four forms) | [1.3](#13-import) | Available |
-| Folders as packages | [1.4](#14-folders-as-packages) | Available |
-| Entry point `Main` | [1.5](#15-entry-point-main) | Available |
-| Top-level functions | [1.6](#16-top-level-functions) | Available |
-| Top-level constants and statics | [1.7](#17-top-level-constants-and-statics) | Available |
-| `namespace`, `using` directives | [1.8](#18-namespace-and-using-directives) | Not planned |
-| Top-level statements | [1.9](#19-top-level-statements) | Later |
-| First-letter visibility rule | [2.1](#21-the-first-letter-rule-for-members) | Available (NZ only) |
-| `public`, `private` | [2.2](#22-public-and-private) | Available |
-| Visibility of types | [2.3](#23-visibility-of-types) | Partial |
-| `internal` | [2.4](#24-internal) | Planned |
-| `protected` | [2.5](#25-protected) | Planned |
-| `file`, `protected internal`, `private protected` | [2.6](#26-file-protected-internal-private-protected) | Later |
-| `class` | [3.1](#31-class) | Available |
-| `struct` | [3.2](#32-struct) | Available |
-| `record class`, `record struct` | [3.3](#33-record-class-and-record-struct) | Partial |
-| Record equality, `ToString`, `with` | [3.4](#34-record-equality-tostring-and-with) | Planned |
-| `enum` | [3.5](#35-enum) | Available |
-| `union` | [3.6](#36-union) | Available |
-| `interface` (declaration) | [3.7](#37-interface) | Partial |
-| `delegate` (declaration) | [3.8](#38-delegate) | Planned |
-| Type aliases `type` | [3.9](#39-type-aliases-type) | Available |
-| `static class` | [3.10](#310-static-class) | Available |
-| Nested types | [3.11](#311-nested-types) | Partial |
-| `partial` | [3.12](#312-partial) | Later |
-| `abstract`, `sealed`, `virtual`, `override`, `new` | [3.13](#313-abstract-sealed-virtual-override-new-modifier) | Planned |
-| `readonly struct`, `ref struct` | [3.14](#314-readonly-struct-and-ref-struct) | Later |
-| Generic types | [3.15](#315-generic-types) | Available |
-| Fields | [4.1](#41-fields) | Available |
-| `const` | [4.2](#42-const) | Partial |
-| `readonly` fields | [4.3](#43-readonly-fields) | Available |
-| `static` fields and methods | [4.4](#44-static-fields-and-methods) | Partial |
-| Methods | [4.5](#45-methods) | Available |
-| Method overloading | [4.6](#46-method-overloading) | Later |
-| Expression-bodied members | [4.7](#47-expression-bodied-members) | Available |
-| Auto-properties | [4.8](#48-auto-properties) | Available |
-| Computed properties | [4.9](#49-computed-properties) | Partial |
-| `field` keyword | [4.10](#410-the-field-keyword) | Later |
-| `required`, `init` | [4.11](#411-required-and-init) | Available |
-| Indexers | [4.12](#412-indexers) | Partial |
-| Operator overloading | [4.13](#413-operator-overloading) | Partial |
-| Conversion operators | [4.14](#414-conversion-operators) | Planned |
-| Events (member) | [4.15](#415-events) | Planned |
-| Finalizers | [4.16](#416-finalizers) | Not planned |
-| Constructors | [5.1](#51-constructors) | Available |
-| `: this(...)` | [5.2](#52-chaining-with--this) | Available |
-| `: base(...)` | [5.3](#53-chaining-with--base) | Planned |
-| Primary constructors | [5.4](#54-primary-constructors) | Partial |
-| Object initializers | [5.5](#55-object-initializers) | Available |
-| Target-typed `new()` | [5.6](#56-target-typed-new) | Later |
-| Static constructors | [5.7](#57-static-constructors) | Planned |
-| Value parameters (moves) | [6.1](#61-value-parameters) | Available |
-| `in`, `ref` parameters | [6.2](#62-in-and-ref-parameters) | Available |
-| `out` parameters | [6.3](#63-out-parameters) | Planned |
-| `params` | [6.4](#64-params) | Available |
-| Default values, named arguments | [6.5](#65-default-values-and-named-arguments) | Partial |
-| `ref readonly`, `scoped` parameters | [6.6](#66-ref-readonly-and-scoped-parameters) | Later |
-| `ref` returns, `ref` locals | [6.7](#67-ref-returns-and-ref-locals) | Planned |
-| Extension methods | [6.8](#68-extension-methods) | Partial |
-| Extension blocks | [6.9](#69-extension-blocks) | Later |
-| Type parameters, generic methods, inference | [7.1](#71-type-parameters-generic-methods-and-inference) | Available |
-| Constraints `where` | [7.2](#72-constraints-where) | Planned |
-| Variance `in`/`out` | [7.3](#73-variance-in-and-out-on-type-parameters) | Planned |
-| Static members of generic types | [7.4](#74-static-members-of-generic-types) | Later |
-| Generic local functions | [7.5](#75-generic-local-functions) | Later |
-| Interface declaration | [8.1](#81-declaring-an-interface) | Available |
-| Implementing an interface | [8.2](#82-implementing-an-interface) | Planned |
-| Default interface members | [8.3](#83-default-interface-members) | Planned |
-| Interface inheritance | [8.4](#84-interface-inheritance) | Planned |
-| `readonly` interface members | [8.5](#85-readonly-interface-members) | Planned (NZ only) |
-| Explicit interface implementation | [8.6](#86-explicit-interface-implementation) | Planned |
-| Static interface members | [8.7](#87-static-and-static-abstract-interface-members) | Later |
-| Base classes | [9.1](#91-base-classes) | Planned |
-| `virtual`, `override`, `abstract`, `sealed`, `new` | [9.2](#92-virtual-override-abstract-sealed-new) | Planned |
-| `base` access | [9.3](#93-base-access) | Planned |
-| Class casts, `as` | [9.4](#94-casts-between-classes-and-as) | Planned |
-| `object` | [9.5](#95-object) | Planned |
-| Local functions | [10.1](#101-local-functions) | Available |
-| Lambdas, `Func`, `Action` | [10.2](#102-lambdas-func-and-action) | Planned |
-| `delegate` types | [10.3](#103-delegate-types) | Planned |
-| Events | [10.4](#104-events) | Planned |
-| `delegate*` | [10.5](#105-function-pointers-delegate) | Later |
-| Attribute syntax | [11.1](#111-attribute-syntax) | Available |
-| `[Test]` | [11.2](#112-test) | Available (NZ only) |
-| Interop attributes | [11.3](#113-interop-attributes) | Available |
-| `[Flags]` | [11.4](#114-flags) | Planned |
-| `[Obsolete]` and other .NET attributes | [11.5](#115-obsolete-and-other-net-attributes) | Planned |
-| User-defined attributes | [11.6](#116-user-defined-attributes) | Partial |
-| Attribute targets | [11.7](#117-attribute-targets-return--assembly--module-) | Planned |
-| `#if`, `#elif`, `#else`, `#endif`, `#define`, `#undef` | [12.1](#121-if-elif-else-endif-define-undef) | Planned |
-| `#region` | [12.2](#122-region-and-endregion) | Planned |
-| `#pragma warning` | [12.3](#123-pragma-warning) | Planned |
-| `#nullable` | [12.4](#124-nullable) | Planned |
-| `#error`, `#warning` | [12.5](#125-error-warning-line) | Planned |
-| `#line` | [12.5](#125-error-warning-line) | Later |
-| `async`, `await`, `Task` | [13.1](#131-async-await-task-and-taskt) | Planned |
-| `async void`, `ValueTask`, `await using` | [13.2](#132-async-void-valuetask-await-using) | Planned |
-| Iterators `yield return` | [13.3](#133-iterators-yield-return) | Planned |
-| Async iterators | [13.4](#134-async-iterators-iasyncenumerablet-await-foreach) | Later |
-| `lock` and `Mutex<T>` | [13.5](#135-lock-and-mutext) | Planned (NZ only) |
-| Exception types | [14.1](#141-exception-types) | Planned |
-| `throw`, `try`, `catch`, `finally` | [14.2](#142-throw-try-catch-finally) | Planned |
-| `Abort`, `Assert`, `Result` | [14.3](#143-failures-today) | Available |
-| `nameof` | [15.1](#151-nameof) | Available |
-| `typeof`, `GetType()`, `Type` | [15.2](#152-typeof-gettype-and-type) | Planned |
-| Reading attributes | [15.3](#153-reading-attributes) | Planned |
-| `dynamic` | [15.4](#154-dynamic) | Later |
-| `unsafe` | [16.1](#161-unsafe) | Available |
-| Pointers, `&`, `stackalloc` | [16.2](#162-pointers--and-stackalloc) | Available |
-| `fixed` | [16.3](#163-fixed) | Available |
-| `NativeMemory` | [16.4](#164-nativememory) | Available |
-| `[StructLayout]` | [16.5](#165-structlayout) | Partial |
-| `extern`, `[DllImport]` | [16.6](#166-extern-and-dllimport) | Available |
-| `[UnmanagedCallersOnly]` | [16.7](#167-unmanagedcallersonly) | Available |
-| `--no-runtime` | [16.8](#168---no-runtime) | Available (NZ only) |
-| `volatile` | [16.9](#169-volatile) | Later |
-| One owner, moves | [17.1](#171-one-owner-moves) | Available (NZ only) |
-| Borrowing `in`, `ref` | [17.2](#172-borrowing-in-and-ref) | Available (NZ only) |
-| `Shared<T>`, `WeakReference<T>` | [17.3](#173-sharedt-and-weakreferencet) | Available (NZ only) |
-| `Arc<T>` | [17.4](#174-arct) | Available (NZ only) |
-| Drop order | [17.5](#175-drop-order) | Available (NZ only) |
-| `defer` | [17.6](#176-defer-and-using) | Available (NZ only) |
-| `using` | [17.6](#176-defer-and-using) | Partial |
-| `IDisposable`, `Dispose` | [17.7](#177-idisposable-and-dispose) | Planned |
-| LINQ query expressions | [18](#18-not-planned) | Not planned |
-| Anonymous types | [18](#18-not-planned) | Not planned |
-| Boxing into `object` | [18](#18-not-planned) | Not planned |

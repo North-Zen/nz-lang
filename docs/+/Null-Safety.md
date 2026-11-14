@@ -27,7 +27,7 @@ var c = new int[3];
 string s = default;
 ```
 
-Here `a[0]` is `""` and `b[0]` is `null`. This differs from C#, where `default(string)` and the elements of a `string[]` are `null`: NZ has no `null` in a non-optional type, so the default of a `string` is the empty string, as the default of an `int` is `0`.
+Here `a[0]` is `""` and `b[0]` is `null`. NZ has no `null` in a non-optional type, so the default of a `string` is the empty string, as the default of an `int` is `0`.
 
 ## What makes a `T?` safe to use (narrowing)
 
@@ -51,7 +51,7 @@ The compiler tracks, syntactically, the local variables and parameters (except `
 
 ### Early exits and joins
 
-As in C#, a test that ends in an exit narrows the code after it. `return`, `break`, `continue` and `Abort(...)` leave the path, so only the path where the test failed goes on:
+A test that ends in an exit narrows the code after it. `return`, `break`, `continue` and `Abort(...)` leave the path, so only the path where the test failed goes on:
 
 ```nz output="3\nnone\n"
 package main;
@@ -119,7 +119,7 @@ void Main(string[] args) {
 ```
 
 
-`?.` needs a value on its left. A type name is not a value, so `Counter?.Hit()` is an error, as in C# (write `Counter.Hit()`):
+`?.` needs a value on its left. A type name is not a value, so `Counter?.Hit()` is an error (write `Counter.Hit()`):
 
 ```nz error="`?.` cannot be used on the type `Counter`"
 package main;
@@ -142,7 +142,7 @@ var n = s != null ? s.Length : 0;
 
 ## Null-conditional indexing `?[`
 
-`a?[i]` (C#) indexes an array, a `List<T>`, a `string` or a span when `a` is not null, and is `null` otherwise. The collection is evaluated once; the index is evaluated only when the collection is not null. The result is the element type made optional (unchanged when the element is already optional), so it is checked like any other optional:
+`a?[i]` indexes an array, a `List<T>`, a `string` or a span when `a` is not null, and is `null` otherwise. The collection is evaluated once; the index is evaluated only when the collection is not null. The result is the element type made optional (unchanged when the element is already optional), so it is checked like any other optional:
 
 ```nz fragment output="True 0\n"
 string? s = null;
@@ -152,7 +152,7 @@ string shown = names?[0] ?? "none";
 Console.WriteLine($"{c == null} {shown.Length - 4}");
 ```
 
-`a?[i]` is a value, not a variable: assigning to it, `++` and passing it to a `ref` parameter are errors (as in C# before C# 14), and so is a range (`a?[1..]`). An index that is out of range stops the program, as `a[i]` does.
+`a?[i]` is a value, not a variable: assigning to it, `++` and passing it to a `ref` parameter are errors, and so is a range (`a?[1..]`). An index that is out of range stops the program, as `a[i]` does.
 
 ```nz fragment error="cannot assign to a null-conditional element"
 List<int>? l = null;
@@ -283,7 +283,7 @@ The value of `??=` itself has type `T` when `v` has type `T`, so `int d = (c ??=
 
 ## Lifted operators
 
-As in C#, operators on `T?` where `T` is a number, `char`, `bool` or an enum are **lifted**. An arithmetic, bitwise, shift or unary operator gives `null` when an operand is `null`, and otherwise the plain operator's result as an optional (`int? + int` is an `int?`). The operation on the values runs only when every operand has a value, with the same promotion and checked arithmetic. `<`, `>`, `<=` and `>=` give a `bool`: `false` when an operand is `null`. On `bool?`, `&` and `|` follow C#'s three-valued table (`false & null` is `false`, `true | null` is `true`); `&&` and `||` take only `bool`. Compound assignment and `++`/`--` are lifted too. The result stays optional, so it must be checked before it is used as a `T`:
+Operators on `T?` where `T` is a number, `char`, `bool` or an enum are **lifted**. An arithmetic, bitwise, shift or unary operator gives `null` when an operand is `null`, and otherwise the plain operator's result as an optional (`int? + int` is an `int?`). The operation on the values runs only when every operand has a value, with the same promotion and checked arithmetic. `<`, `>`, `<=` and `>=` give a `bool`: `false` when an operand is `null`. On `bool?`, `&` and `|` follow a three-valued table (`false & null` is `false`, `true | null` is `true`); `&&` and `||` take only `bool`. Compound assignment and `++`/`--` are lifted too. The result stays optional, so it must be checked before it is used as a `T`:
 
 ```nz fragment output="11 [] False\n"
 int? a = 10;
@@ -298,7 +298,7 @@ int? a = 10;
 int b = a + 1;
 ```
 
-A `string?` is not lifted, but `+` with a string operand is concatenation, as in C#: a `null` operand counts as `""`. So `s + "x"` on a null `s` is `"x"` (a `string`, never `null`), and `s += "x"` on a null `string?` stores `"x"`. Other uses of a `string?` (`-`, `.Length`) still need a check. Objects and structs are not lifted, and an optional one cannot be concatenated yet.
+A `string?` is not lifted, but `+` with a string operand is concatenation: a `null` operand counts as `""`. So `s + "x"` on a null `s` is `"x"` (a `string`, never `null`), and `s += "x"` on a null `string?` stores `"x"`. Other uses of a `string?` (`-`, `.Length`) still need a check. Objects and structs are not lifted, and an optional one cannot be concatenated yet.
 
 ```nz fragment output="[x] [x] [ab]\n"
 string? s = null;
@@ -310,7 +310,7 @@ Console.WriteLine($"[{s + "x"}] [{t}] [{u + "b" + s}]");
 
 ## `Value` and `HasValue`
 
-An optional of a value type is C#'s `Nullable<T>`: `int?`, `long?`, `double?`, `bool?`, `char?`, an enum, a struct or a tuple. As in C#, `HasValue` tells whether it holds a value and `Value` is the value. Both are read-only, and `Value` is a copy of the value, not a variable: a write to a part of it (`p.Value.X = 5`, `p.Value.X++`, `p.Value.X += 2`, passing `p.Value.X` by `ref`) is an error, as C# refuses it (CS1612); a method that changes its receiver, called on `p.Value`, changes that copy and leaves `p` as it was, as in C#. A struct that owns a class object or a collection is read in place (a class or a list is a reference in C#, so changing the object it refers to changes the optional's own object too); a method that may change such a struct is refused on `Value` for now, since it is not copied. The optional's members hide a struct's own fields of the same names, as in C#: on `V? v`, where `struct V` has fields `Value` and `HasValue`, `v.Value` is the whole `V` and `v.HasValue` tells whether `v` is null; read the fields as `v.Value.Value` and `v.Value.HasValue`. `Value` of a `null` optional stops the program with `InvalidOperationException: Nullable object must have a value.`, where C# throws that exception. A null test or `HasValue` in a condition narrows the variable as `!= null` does, and `Value` is still allowed on it. A `string?` or an optional object is no `Nullable<T>` in C#, so it has neither member; check it with `!= null`.
+An optional of a value type is a `Nullable<T>`: `int?`, `long?`, `double?`, `bool?`, `char?`, an enum, a struct or a tuple. `HasValue` tells whether it holds a value and `Value` is the value. Both are read-only, and `Value` is a copy of the value, not a variable: a write to a part of it (`p.Value.X = 5`, `p.Value.X++`, `p.Value.X += 2`, passing `p.Value.X` by `ref`) is an error; a method that changes its receiver, called on `p.Value`, changes that copy and leaves `p` as it was. A struct that owns a class object or a collection is read in place (a class or a list is a reference, so changing the object it refers to changes the optional's own object too); a method that may change such a struct is refused on `Value` for now, since it is not copied. The optional's members hide a struct's own fields of the same names: on `V? v`, where `struct V` has fields `Value` and `HasValue`, `v.Value` is the whole `V` and `v.HasValue` tells whether `v` is null; read the fields as `v.Value.Value` and `v.Value.HasValue`. `Value` of a `null` optional stops the program with `InvalidOperationException: Nullable object must have a value.` A null test or `HasValue` in a condition narrows the variable as `!= null` does, and `Value` is still allowed on it. A `string?` or an optional object is no `Nullable<T>`, so it has neither member; check it with `!= null`.
 
 ```nz fragment output="3 True\nFalse\n"
 int? q = 3;

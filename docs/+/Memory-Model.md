@@ -1,6 +1,6 @@
 # Memory Model
 
-> Status: tier 1 is implemented. Ownership, moves, `in`/`ref` borrows and deterministic drops are enforced by the compiler; see [Ownership](Ownership.md) for what it really does. Strings are reference-counted and freed with their last holder; see [Ownership: Strings](Ownership.md#strings). Tier 2 (`Shared<T>`, `Arc<T>`, `WeakReference<T>` in `std.memory`) is implemented; see [Ownership: Shared objects](Ownership.md#shared-objects). Tier 3 does not exist yet.
+Tier 1 is implemented. Ownership, moves, `in`/`ref` borrows and deterministic drops are enforced by the compiler; see [Ownership](Ownership.md) for what it really does. Strings are reference-counted and freed with their last holder; see [Ownership: Strings](Ownership.md#strings). Tier 2 (`Shared<T>`, `Arc<T>`, `WeakReference<T>` in `std.memory`) is implemented; see [Ownership: Shared objects](Ownership.md#shared-objects). Tier 3 does not exist yet.
 
 NZ has no garbage collector by default, yet it stays memory safe. The approach is **two layers** on top of one shared core, so the ecosystem does not split into two coding styles.
 
@@ -29,4 +29,4 @@ Library types for data that really has to be shared: `Arc<T>` (atomic, across th
 
 ## Kernel mode
 
-The `no_runtime` mode forbids tier 2 at the package level. Its first form is `nzc build --no-runtime` (guide section 1.13): the program links the C library only and includes `nz_core.h`, not `nz.h`. Strings, `Console`, classes, arrays, lists and the handles are refused there; numbers, structs, pointers, statics, `extern` calls, `stackalloc` and `NativeMemory` remain, and integer arithmetic stays checked.
+The `no_runtime` mode forbids tier 2 at the package level. Its first form is `nzc build --no-runtime` (guide section [23.1](../23-serialization-and-interoperability.md#231-c-interop)): the program links the C library only and includes `nz_core.h`, not `nz.h`. Strings, `Console`, classes, arrays, lists and the handles are refused there; numbers, structs, pointers, statics, `extern` calls, `stackalloc` and `NativeMemory` remain, and integer arithmetic stays checked.

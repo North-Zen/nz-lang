@@ -1,0 +1,1131 @@
+{
+  "format": 1,
+  "title": "NZ Programming Language",
+  "contents": "README.md",
+  "chapters": [
+    {
+      "slug": "introduction",
+      "number": "0",
+      "title": "Introduction",
+      "file": "00-introduction.md",
+      "status": "Available",
+      "chapter": "0",
+      "sections": [
+        {
+          "number": "0.1",
+          "title": "Installation and Hello World",
+          "anchor": "01-installation-and-hello-world",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "0.2",
+          "title": "Toolchain",
+          "anchor": "02-toolchain",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "0.3",
+          "title": "Characteristics, Rules and Naming",
+          "anchor": "03-characteristics-rules-and-naming",
+          "status": "Available",
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "slug": "basic",
+      "number": "1",
+      "title": "Basic",
+      "file": "01-basic.md",
+      "status": "Partial",
+      "chapter": "1",
+      "sections": [
+        {
+          "number": "1.1",
+          "title": "Data Types",
+          "anchor": "11-data-types",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "1.1.1",
+          "title": "Numbers",
+          "anchor": "111-numbers",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "1.1.2",
+          "title": "Characters",
+          "anchor": "112-characters",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "",
+          "title": "Strings",
+          "anchor": "strings",
+          "status": "Available",
+          "depth": 4
+        },
+        {
+          "number": "1.1.3",
+          "title": "Boolean",
+          "anchor": "113-boolean",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "1.1.4",
+          "title": "Pointer",
+          "anchor": "114-pointer",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "1.1.5",
+          "title": "Empty data type (`void`)",
+          "anchor": "115-empty-data-type-void",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "1.1.6",
+          "title": "Aliases",
+          "anchor": "116-aliases",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "1.1.7",
+          "title": "Type checking",
+          "anchor": "117-type-checking",
+          "status": "Partial",
+          "depth": 3
+        },
+        {
+          "number": "1.2",
+          "title": "Conversion, type checks and casting",
+          "anchor": "12-conversion-type-checks-and-casting",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "",
+          "title": "Implicit conversions",
+          "anchor": "implicit-conversions",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "",
+          "title": "Casts",
+          "anchor": "casts",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "1.3",
+          "title": "Data items (variables, `var`, constants)",
+          "anchor": "13-data-items-variables-var-constants",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "",
+          "title": "Default values (`default`)",
+          "anchor": "default-values-default",
+          "status": "Available",
+          "depth": 3
+        }
+      ]
+    },
+    {
+      "slug": "basic-data-structures",
+      "number": "1.4",
+      "title": "Data Structures",
+      "file": "01-basic-data-structures.md",
+      "status": "Partial",
+      "chapter": "1",
+      "sections": [
+        {
+          "number": "1.4.1",
+          "title": "Array",
+          "anchor": "141-array",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "",
+          "title": "Collection expressions",
+          "anchor": "collection-expressions",
+          "status": "Available",
+          "depth": 4
+        },
+        {
+          "number": "1.4.2",
+          "title": "List",
+          "anchor": "142-list",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "1.4.3",
+          "title": "Dictionary",
+          "anchor": "143-dictionary",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "1.4.4",
+          "title": "Struct",
+          "anchor": "144-struct",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "1.4.5",
+          "title": "Interface",
+          "anchor": "145-interface",
+          "status": "Partial",
+          "depth": 3
+        },
+        {
+          "number": "1.4.6",
+          "title": "Enum",
+          "anchor": "146-enum",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "1.4.7",
+          "title": "Object",
+          "anchor": "147-object",
+          "status": "Later",
+          "depth": 3
+        },
+        {
+          "number": "1.4.8",
+          "title": "Tuple",
+          "anchor": "148-tuple",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "1.4.9",
+          "title": "Anonymous object",
+          "anchor": "149-anonymous-object",
+          "status": "Not planned",
+          "depth": 3
+        },
+        {
+          "number": "1.4.10",
+          "title": "Blocking queue (BlockingCollection, Channel)",
+          "anchor": "1410-blocking-queue-blockingcollection-channel",
+          "status": "Later",
+          "depth": 3
+        },
+        {
+          "number": "1.4.11",
+          "title": "Others (HashSet, Stack, Queue, Span, ranges)",
+          "anchor": "1411-others-hashset-stack-queue-span-ranges",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "1.4.12",
+          "title": "Union",
+          "anchor": "1412-union",
+          "status": "Available",
+          "depth": 3
+        }
+      ]
+    },
+    {
+      "slug": "basic-operators-control-flow",
+      "number": "1.5",
+      "title": "Operators and control flow",
+      "file": "01-basic-operators-control-flow.md",
+      "status": "Available",
+      "chapter": "1",
+      "sections": [
+        {
+          "number": "1.5",
+          "title": "Operators",
+          "anchor": "15-operators",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "",
+          "title": "The `sizeof` operator",
+          "anchor": "the-sizeof-operator",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "1.6",
+          "title": "Control flow",
+          "anchor": "16-control-flow",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "1.6.1",
+          "title": "Conditionals",
+          "anchor": "161-conditionals",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "",
+          "title": "Patterns",
+          "anchor": "patterns",
+          "status": "Available",
+          "depth": 4
+        },
+        {
+          "number": "",
+          "title": "The `switch` statement",
+          "anchor": "the-switch-statement",
+          "status": "Available",
+          "depth": 4
+        },
+        {
+          "number": "1.6.2",
+          "title": "Loops",
+          "anchor": "162-loops",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "",
+          "title": "`do ... while`",
+          "anchor": "do--while",
+          "status": "Available",
+          "depth": 4
+        },
+        {
+          "number": "",
+          "title": "Labeled loops",
+          "anchor": "labeled-loops",
+          "status": "Available",
+          "depth": 4
+        }
+      ]
+    },
+    {
+      "slug": "basic-null-safety-io",
+      "number": "1.7",
+      "title": "Null safety, input and output",
+      "file": "01-basic-null-safety-io.md",
+      "status": "Available",
+      "chapter": "1",
+      "sections": [
+        {
+          "number": "1.7",
+          "title": "Null safety",
+          "anchor": "17-null-safety",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "1.8",
+          "title": "Input and output",
+          "anchor": "18-input-and-output",
+          "status": "Partial",
+          "depth": 2
+        },
+        {
+          "number": "1.9",
+          "title": "The `using` keyword",
+          "anchor": "19-the-using-keyword",
+          "status": "Partial",
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "slug": "programming-paradigms",
+      "number": "2",
+      "title": "Programming paradigms",
+      "file": "02-programming-paradigms.md",
+      "status": "Planned",
+      "chapter": "2",
+      "sections": []
+    },
+    {
+      "slug": "functional-programming",
+      "number": "3",
+      "title": "Functional programming",
+      "file": "03-functional-programming.md",
+      "status": "Partial",
+      "chapter": "3",
+      "sections": [
+        {
+          "number": "3.1",
+          "title": "Functions are first-class and can be higher-order",
+          "anchor": "31-functions-are-first-class-and-can-be-higher-order",
+          "status": "Planned",
+          "depth": 2
+        },
+        {
+          "number": "3.2",
+          "title": "Main function",
+          "anchor": "32-main-function",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "3.3",
+          "title": "Pure functions",
+          "anchor": "33-pure-functions",
+          "status": "Later",
+          "depth": 2
+        },
+        {
+          "number": "3.4",
+          "title": "Recursion",
+          "anchor": "34-recursion",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "3.5",
+          "title": "Immutable variables in functions",
+          "anchor": "35-immutable-variables-in-functions",
+          "status": "Partial",
+          "depth": 2
+        },
+        {
+          "number": "3.6",
+          "title": "Functions with and without a return value",
+          "anchor": "36-functions-with-and-without-a-return-value",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "3.7",
+          "title": "Function parameters",
+          "anchor": "37-function-parameters",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "",
+          "title": "`ref` parameters",
+          "anchor": "ref-parameters",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "",
+          "title": "Default parameter values",
+          "anchor": "default-parameter-values",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "",
+          "title": "Named arguments",
+          "anchor": "named-arguments",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "",
+          "title": "`params`",
+          "anchor": "params",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "3.8",
+          "title": "Main function parameters",
+          "anchor": "38-main-function-parameters",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "3.9",
+          "title": "Short expression bodies",
+          "anchor": "39-short-expression-bodies",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "3.10",
+          "title": "Higher-order functions",
+          "anchor": "310-higher-order-functions",
+          "status": "Planned",
+          "depth": 2
+        },
+        {
+          "number": "3.11",
+          "title": "Method references",
+          "anchor": "311-method-references",
+          "status": "Planned",
+          "depth": 2
+        },
+        {
+          "number": "3.12",
+          "title": "Local functions",
+          "anchor": "312-local-functions",
+          "status": "Available",
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "slug": "struct",
+      "number": "4",
+      "title": "Struct",
+      "file": "04-struct.md",
+      "status": "Available",
+      "chapter": "4",
+      "sections": []
+    },
+    {
+      "slug": "object-oriented-programming",
+      "number": "5",
+      "title": "Object-oriented programming",
+      "file": "05-object-oriented-programming.md",
+      "status": "Partial",
+      "chapter": "5",
+      "sections": [
+        {
+          "number": "5.1",
+          "title": "Object",
+          "anchor": "51-object",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "5.2",
+          "title": "Class",
+          "anchor": "52-class",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "5.3",
+          "title": "Property and method",
+          "anchor": "53-property-and-method",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "",
+          "title": "Properties",
+          "anchor": "properties",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "",
+          "title": "Indexers",
+          "anchor": "indexers",
+          "status": "Partial",
+          "depth": 3
+        },
+        {
+          "number": "",
+          "title": "Operator overloading",
+          "anchor": "operator-overloading",
+          "status": "Partial",
+          "depth": 3
+        },
+        {
+          "number": "5.4",
+          "title": "Access modifiers",
+          "anchor": "54-access-modifiers",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "5.5",
+          "title": "Namespace (NZ: packages)",
+          "anchor": "55-namespace-nz-packages",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "5.6",
+          "title": "Encapsulation",
+          "anchor": "56-encapsulation",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "5.7",
+          "title": "Constructor",
+          "anchor": "57-constructor",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "5.8",
+          "title": "Variable shadowing",
+          "anchor": "58-variable-shadowing",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "5.9",
+          "title": "Inheritance",
+          "anchor": "59-inheritance",
+          "status": "Planned",
+          "depth": 2
+        },
+        {
+          "number": "5.10",
+          "title": "Abstract",
+          "anchor": "510-abstract",
+          "status": "Planned",
+          "depth": 2
+        },
+        {
+          "number": "5.11",
+          "title": "Enumerated types",
+          "anchor": "511-enumerated-types",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "5.12",
+          "title": "Extension methods",
+          "anchor": "512-extension-methods",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "5.13",
+          "title": "The `base` keyword",
+          "anchor": "513-the-base-keyword",
+          "status": "Planned",
+          "depth": 2
+        },
+        {
+          "number": "5.14",
+          "title": "Polymorphism",
+          "anchor": "514-polymorphism",
+          "status": "Planned",
+          "depth": 2
+        },
+        {
+          "number": "5.15",
+          "title": "Meta-programming",
+          "anchor": "515-meta-programming",
+          "status": "Partial",
+          "depth": 2
+        },
+        {
+          "number": "5.16",
+          "title": "Static",
+          "anchor": "516-static",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "",
+          "title": "Static variables",
+          "anchor": "static-variables",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "5.17",
+          "title": "Metadata",
+          "anchor": "517-metadata",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "5.18",
+          "title": "Nested types",
+          "anchor": "518-nested-types",
+          "status": "Available",
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "slug": "exceptions-and-error-handling",
+      "number": "6",
+      "title": "Exceptions and error handling",
+      "file": "06-exceptions-and-error-handling.md",
+      "status": "Partial",
+      "chapter": "6",
+      "sections": [
+        {
+          "number": "6.1",
+          "title": "Creating errors",
+          "anchor": "61-creating-errors",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "6.2",
+          "title": "Handling errors",
+          "anchor": "62-handling-errors",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "6.3",
+          "title": "Using `throw`",
+          "anchor": "63-using-throw",
+          "status": "Planned",
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "slug": "concurrency-and-parallel-programming",
+      "number": "7",
+      "title": "Concurrency and parallel programming",
+      "file": "07-concurrency-and-parallel-programming.md",
+      "status": "Planned",
+      "chapter": "7",
+      "sections": [
+        {
+          "number": "7.1",
+          "title": "Concurrency",
+          "anchor": "71-concurrency",
+          "status": "Planned",
+          "depth": 2
+        },
+        {
+          "number": "7.2",
+          "title": "Parallel programming",
+          "anchor": "72-parallel-programming",
+          "status": "Later",
+          "depth": 2
+        },
+        {
+          "number": "7.3",
+          "title": "Race conditions",
+          "anchor": "73-race-conditions",
+          "status": "Planned",
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "slug": "generics",
+      "number": "8",
+      "title": "Generics",
+      "file": "08-generics.md",
+      "status": "Partial",
+      "chapter": "8",
+      "sections": [
+        {
+          "number": "8.1",
+          "title": "Type inference",
+          "anchor": "81-type-inference",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "8.2",
+          "title": "Generic class",
+          "anchor": "82-generic-class",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "8.3",
+          "title": "Generic function",
+          "anchor": "83-generic-function",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "8.4",
+          "title": "Covariance",
+          "anchor": "84-covariance",
+          "status": "Planned",
+          "depth": 2
+        },
+        {
+          "number": "8.5",
+          "title": "Constraints",
+          "anchor": "85-constraints",
+          "status": "Planned",
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "slug": "domain-specific-languages",
+      "number": "9",
+      "title": "Domain-specific languages",
+      "file": "09-domain-specific-languages.md",
+      "status": "Later",
+      "chapter": "9",
+      "sections": []
+    },
+    {
+      "slug": "package-manager",
+      "number": "10",
+      "title": "Package manager",
+      "file": "10-package-manager.md",
+      "status": "Later",
+      "chapter": "10",
+      "sections": []
+    },
+    {
+      "slug": "testing-and-debugging",
+      "number": "11",
+      "title": "Testing and debugging",
+      "file": "11-testing-and-debugging.md",
+      "status": "Partial",
+      "chapter": "11",
+      "sections": [
+        {
+          "number": "11.1",
+          "title": "Unit testing",
+          "anchor": "111-unit-testing",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "11.2",
+          "title": "Debugging",
+          "anchor": "112-debugging",
+          "status": "Partial",
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "slug": "keywords-and-syntactic-sugar",
+      "number": "12",
+      "title": "Keywords and syntactic sugar",
+      "file": "12-keywords-and-syntactic-sugar.md",
+      "status": "Partial",
+      "chapter": "12",
+      "sections": [
+        {
+          "number": "",
+          "title": "`nameof`",
+          "anchor": "nameof",
+          "status": "Available",
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "slug": "regular-expressions",
+      "number": "13",
+      "title": "Regular expressions",
+      "file": "13-regular-expressions.md",
+      "status": "Later",
+      "chapter": "13",
+      "sections": []
+    },
+    {
+      "slug": "preprocessor-directives",
+      "number": "14",
+      "title": "Preprocessor directives",
+      "file": "14-preprocessor-directives.md",
+      "status": "Planned",
+      "chapter": "14",
+      "sections": []
+    },
+    {
+      "slug": "memory-management",
+      "number": "15",
+      "title": "Memory management",
+      "file": "15-memory-management.md",
+      "status": "Available",
+      "chapter": "15",
+      "sections": [
+        {
+          "number": "15.1",
+          "title": "No garbage collector by default",
+          "anchor": "151-no-garbage-collector-by-default",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "15.2",
+          "title": "How memory is managed: stack, heap, deterministic drop, drop order",
+          "anchor": "152-how-memory-is-managed-stack-heap-deterministic-drop-drop-order",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "15.3",
+          "title": "Ownership and moves",
+          "anchor": "153-ownership-and-moves",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "15.4",
+          "title": "Borrowing (`in`, `ref`, loans, aliases)",
+          "anchor": "154-borrowing-in-ref-loans-aliases",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "15.5",
+          "title": "Reference counting (`Shared<T>`, `Arc<T>`, `WeakReference<T>`)",
+          "anchor": "155-reference-counting-sharedt-arct-weakreferencet",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "15.6",
+          "title": "Unsafe memory",
+          "anchor": "156-unsafe-memory",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "",
+          "title": "The `unsafe` keyword",
+          "anchor": "the-unsafe-keyword",
+          "status": "Available",
+          "depth": 3
+        },
+        {
+          "number": "15.7",
+          "title": "Memory problems and how NZ prevents them",
+          "anchor": "157-memory-problems-and-how-nz-prevents-them",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "15.8",
+          "title": "Detecting leaks: sanitizer and trace modes",
+          "anchor": "158-detecting-leaks-sanitizer-and-trace-modes",
+          "status": "Partial",
+          "depth": 2
+        },
+        {
+          "number": "15.9",
+          "title": "Memory layout and limits",
+          "anchor": "159-memory-layout-and-limits",
+          "status": "Partial",
+          "depth": 2
+        },
+        {
+          "number": "15.10",
+          "title": "Memory without a garbage collector",
+          "anchor": "1510-memory-without-a-garbage-collector",
+          "status": "Available",
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "slug": "performance-engineering",
+      "number": "16",
+      "title": "Performance engineering",
+      "file": "16-performance-engineering.md",
+      "status": "Later",
+      "chapter": "16",
+      "sections": []
+    },
+    {
+      "slug": "monitoring-and-diagnostics",
+      "number": "17",
+      "title": "Monitoring and diagnostics",
+      "file": "17-monitoring-and-diagnostics.md",
+      "status": "Partial",
+      "chapter": "17",
+      "sections": []
+    },
+    {
+      "slug": "build-system-and-project-architecture",
+      "number": "18",
+      "title": "Build system and project architecture",
+      "file": "18-build-system-and-project-architecture.md",
+      "status": "Partial",
+      "chapter": "18",
+      "sections": []
+    },
+    {
+      "slug": "design-patterns",
+      "number": "19",
+      "title": "Design patterns",
+      "file": "19-design-patterns.md",
+      "status": "Later",
+      "chapter": "19",
+      "sections": []
+    },
+    {
+      "slug": "module-system-and-visibility",
+      "number": "20",
+      "title": "Module system and visibility rules",
+      "file": "20-module-system-and-visibility.md",
+      "status": "Available",
+      "chapter": "20",
+      "sections": [
+        {
+          "number": "20.1",
+          "title": "Packages",
+          "anchor": "201-packages",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "20.2",
+          "title": "Imports",
+          "anchor": "202-imports",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "20.3",
+          "title": "Access modifiers",
+          "anchor": "203-access-modifiers",
+          "status": "Available",
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "slug": "networking-fundamentals",
+      "number": "21",
+      "title": "Networking fundamentals",
+      "file": "21-networking-fundamentals.md",
+      "status": "Later",
+      "chapter": "21",
+      "sections": []
+    },
+    {
+      "slug": "file-system-and-os-interaction",
+      "number": "22",
+      "title": "File system and OS interaction",
+      "file": "22-file-system-and-os-interaction.md",
+      "status": "Partial",
+      "chapter": "22",
+      "sections": []
+    },
+    {
+      "slug": "serialization-and-interoperability",
+      "number": "23",
+      "title": "Serialization and interoperability",
+      "file": "23-serialization-and-interoperability.md",
+      "status": "Partial",
+      "chapter": "23",
+      "sections": [
+        {
+          "number": "23.1",
+          "title": "C interop",
+          "anchor": "231-c-interop",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "23.2",
+          "title": "Serialization",
+          "anchor": "232-serialization",
+          "status": "Later",
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "slug": "reflection-and-meta-programming",
+      "number": "24",
+      "title": "Reflection and meta-programming",
+      "file": "24-reflection-and-meta-programming.md",
+      "status": "Partial",
+      "chapter": "24",
+      "sections": [
+        {
+          "number": "24.1",
+          "title": "Attributes",
+          "anchor": "241-attributes",
+          "status": "Available",
+          "depth": 2
+        },
+        {
+          "number": "24.2",
+          "title": "Reflection",
+          "anchor": "242-reflection",
+          "status": "Planned",
+          "depth": 2
+        },
+        {
+          "number": "24.3",
+          "title": "Meta-programming",
+          "anchor": "243-meta-programming",
+          "status": "Later",
+          "depth": 2
+        }
+      ]
+    },
+    {
+      "slug": "ecosystem-and-frameworks",
+      "number": "25",
+      "title": "Ecosystem and frameworks",
+      "file": "25-ecosystem-and-frameworks.md",
+      "status": "Later",
+      "chapter": "25",
+      "sections": []
+    },
+    {
+      "slug": "appendix-a-standard-library",
+      "number": "A",
+      "title": "Standard library reference",
+      "file": "appendix-a-standard-library.md",
+      "status": "Available",
+      "chapter": "A",
+      "sections": []
+    },
+    {
+      "slug": "appendix-b-current-behavior",
+      "number": "B",
+      "title": "Current behavior notes",
+      "file": "appendix-b-current-behavior.md",
+      "status": "Available",
+      "chapter": "B",
+      "sections": []
+    }
+  ],
+  "guides": [
+    {
+      "title": "Compiler API",
+      "file": "+/Compiler-API.md"
+    },
+    {
+      "title": "Compiler",
+      "file": "+/Compiler.md"
+    },
+    {
+      "title": "Error Handling",
+      "file": "+/Error-Handling.md"
+    },
+    {
+      "title": "Memory Model",
+      "file": "+/Memory-Model.md"
+    },
+    {
+      "title": "Null Safety",
+      "file": "+/Null-Safety.md"
+    },
+    {
+      "title": "Ownership and Borrowing",
+      "file": "+/Ownership.md"
+    },
+    {
+      "title": "Standard Library",
+      "file": "+/Standard-Library.md"
+    },
+    {
+      "title": "Syntax Reference, Part 2: Declarations",
+      "file": "+/Syntax-Declarations.md"
+    },
+    {
+      "title": "Syntax Reference",
+      "file": "+/Syntax-Reference.md"
+    }
+  ]
+}

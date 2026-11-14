@@ -51,7 +51,7 @@ Lend the field with `in`, copy the values you need, or take the object out by re
 
 ### Reading an element through an alias
 
-`var t = l[i];` (or `Token t = l[i];`) where the element is an object of a class does not move it: `t` is a **read-only alias** of the element, which the collection keeps owning (in C# the variable copies the reference; NZ code (C# style) reads the same element in place). This works for list, array and dictionary elements, also through fields and `in` or `ref` parameters. No count changes and nothing is freed when `t` ends.
+`var t = l[i];` (or `Token t = l[i];`) where the element is an object of a class does not move it: `t` is a **read-only alias** of the element, which the collection keeps owning (it reads the same element in place). This works for list, array and dictionary elements, also through fields and `in` or `ref` parameters. No count changes and nothing is freed when `t` ends.
 
 ```nz output="2 b\n"
 package main;
@@ -180,7 +180,7 @@ void Main(string[] args) {
 
 ## Unions
 
-A union (README section 2.9) is `Copy` when every case is `Copy`, counted when a case holds a string and none is owned (copied freely, the copy holding its own count on the active case's strings, as a struct of strings is), and owned otherwise. An owned union is moved as a whole, like a struct that owns something: assigning it or passing it without a modifier moves it, and dropping it drops only the case it holds (through the same worklist as every other drop).
+A union (guide section [1.4.12](../01-basic-data-structures.md#1412-union)) is `Copy` when every case is `Copy`, counted when a case holds a string and none is owned (copied freely, the copy holding its own count on the active case's strings, as a struct of strings is), and owned otherwise. An owned union is moved as a whole, like a struct that owns something: assigning it or passing it without a modifier moves it, and dropping it drops only the case it holds (through the same worklist as every other drop).
 
 A `switch` or an `is` borrows the union it tests, and a binding (`Cat c`) borrows the case: it can be read and changed, and the change is seen through the union, but it cannot be moved out:
 
@@ -234,11 +234,11 @@ void Main(string[] args) {
 
 A value made on the spot that a `switch` or `is` tests lives until the end of its statement (see "Freed at scope exit"). A method of a union receives `this` borrowed, as a struct's method does; a method that changes a case through `this` cannot be called on an `in` parameter. Assigning a pattern variable that reads a struct case which owns something, in place in its union, is not supported yet.
 
-A `switch` binding only borrows the payload of a `Result` (README section 1.7): it reads `ok.Value` but cannot take it. The `?` operator moves the payload out of a `Result` the function owns (see [`?` leaves the function like `return`](#-leaves-the-function-like-return)).
+A `switch` binding only borrows the payload of a `Result` (guide section [6.2](../06-exceptions-and-error-handling.md#62-handling-errors)): it reads `ok.Value` but cannot take it. The `?` operator moves the payload out of a `Result` the function owns (see [`?` leaves the function like `return`](#-leaves-the-function-like-return)).
 
 ### Pattern variables at depth
 
-A variable inside a property or positional pattern (`{ A: var a }`, `(_, var c)`, `{ A: { X: var x } p }`) borrows the member it matched, as a case binding borrows its case. Replacing that member, or the value that holds it, ends the variable; changing a field inside the borrowed object does not, and the variable sees the change, as in C#. A class or a handle is borrowed, a `Copy` value is copied, a string gets a count of its own (it survives the replacement of its member, as in C#), and a struct that owns something is read where it is stored. Such a struct inside a list element is not supported yet. A `when` guard runs after the variables are set. It cannot move, replace or change the value its `switch` tests (the later arms still test it), and a write through a designation (`{ A: var a } q`, then `q.A = ...`) ends `a` like a write through the tested variable.
+A variable inside a property or positional pattern (`{ A: var a }`, `(_, var c)`, `{ A: { X: var x } p }`) borrows the member it matched, as a case binding borrows its case. Replacing that member, or the value that holds it, ends the variable; changing a field inside the borrowed object does not, and the variable sees the change. A class or a handle is borrowed, a `Copy` value is copied, a string gets a count of its own (it survives the replacement of its member), and a struct that owns something is read where it is stored. Such a struct inside a list element is not supported yet. A `when` guard runs after the variables are set. It cannot move, replace or change the value its `switch` tests (the later arms still test it), and a write through a designation (`{ A: var a } q`, then `q.A = ...`) ends `a` like a write through the tested variable.
 
 ```nz fragment error="can no longer be used"
 var t = (1, new List<int>());
@@ -335,7 +335,7 @@ void Main(string[] args) {
 }
 ```
 
-Writing through an `in` parameter is an error. As in C#, an `in` parameter is a read-only **reference**, also for a value type such as `int` or a struct: the callee reads the caller's storage, not a copy, so a change made to that storage during the call by other means is seen through the parameter (except for `in string` and `in string?`, which hold a copy of their own; see [Strings](#strings)). In tier-1 code the borrow rules leave only one such means, an `unsafe` callee writing a static it also received by `in`: with `static int counter = 1;` and `unsafe void Bump(in int n) { counter = 2; Console.WriteLine($"{n} {counter}"); }`, `unsafe { Bump(counter); }` prints `2 2`. A [shared object](#shared-objects) can be changed through another handle:
+Writing through an `in` parameter is an error. An `in` parameter is a read-only **reference**, also for a value type such as `int` or a struct: the callee reads the caller's storage, not a copy, so a change made to that storage during the call by other means is seen through the parameter (except for `in string` and `in string?`, which hold a copy of their own; see [Strings](#strings)). In tier-1 code the borrow rules leave only one such means, an `unsafe` callee writing a static it also received by `in`: with `static int counter = 1;` and `unsafe void Bump(in int n) { counter = 2; Console.WriteLine($"{n} {counter}"); }`, `unsafe { Bump(counter); }` prints `2 2`. A [shared object](#shared-objects) can be changed through another handle:
 
 ```nz output="2\n"
 package main;
@@ -383,7 +383,7 @@ void Main(string[] args) {
 }
 ```
 
-The same rule covers an array element passed by `ref`: while the call runs, the array itself or a second element of it cannot be passed to the same call. A `List<T>` element is not a variable (it is read through the list's indexer) and cannot be passed by `ref` at all, as in C#.
+The same rule covers an array element passed by `ref`: while the call runs, the array itself or a second element of it cannot be passed to the same call. A `List<T>` element is not a variable (it is read through the list's indexer) and cannot be passed by `ref` at all.
 
 ## `foreach` freezes its collection
 
@@ -409,7 +409,7 @@ A `foreach` over a `Shared<T>` or `Arc<T>` handle walks the list or array the ha
 
 ## Local functions borrow what they capture
 
-A local function (guide section 1.5) reads variables of the function around it. That read is a borrow like `in`: it is read-only, and it lasts for each call of the local function. The local function never owns what it reads, so it never frees it; the owner stays the enclosing function.
+A local function (guide section [3.12](../03-functional-programming.md#312-local-functions)) reads variables of the function around it. That read is a borrow like `in`: it is read-only, and it lasts for each call of the local function. The local function never owns what it reads, so it never frees it; the owner stays the enclosing function.
 
 Inside the local function a captured variable follows the rules of an `in` parameter: it cannot be assigned, passed by `ref`, moved, or have a field or element written, and a method that changes it cannot be called on it. The error names the local function:
 
@@ -599,7 +599,7 @@ void Main(string[] args) {
 }
 ```
 
-Nothing a program can do today observes the order inside one drop: there are no destructors yet, and `Diag.LiveObjects()` and the `NZ_ALLOC_REPORT=1` report are read between statements. The order is fixed now because it becomes the order in which destructors run once they exist. Real C# has no deterministic destructor order for managed objects (a finalizer runs when the garbage collector decides, `IDisposable.Dispose` when the program calls it), so this rule is NZ's own; it is the parent-before-members order of Rust and C++. Each field's value is read before its object is freed, so no drop reads freed memory, and nothing is freed while a borrow of it lives (the borrow rules above). The fields declared after a chain's link drop only once the rest of the chain has, so they wait while the drop runs; in a long chain the runtime keeps each object's waiting fields in one record, for a class object as large as the object and allocated as it is freed (the allocator can give back that block), for the struct payload of a `Shared<T>` or `Arc<T>` only as large as the waiting fields, so dropping a chain of one class takes about the memory the chain held (see README, "Dropping a deep structure needs only a bounded stack").
+Nothing a program can do today observes the order inside one drop: there are no destructors yet, and `Diag.LiveObjects()` and the `NZ_ALLOC_REPORT=1` report are read between statements. The order is fixed now because it becomes the order in which destructors run once they exist. The rule is NZ's own; it is the parent-before-members order of Rust and C++. Each field's value is read before its object is freed, so no drop reads freed memory, and nothing is freed while a borrow of it lives (the borrow rules above). The fields declared after a chain's link drop only once the rest of the chain has, so they wait while the drop runs; in a long chain the runtime keeps each object's waiting fields in one record, for a class object as large as the object and allocated as it is freed (the allocator can give back that block), for the struct payload of a `Shared<T>` or `Arc<T>` only as large as the waiting fields, so dropping a chain of one class takes about the memory the chain held (see README, "Dropping a deep structure needs only a bounded stack").
 
 ## `?` leaves the function like `return`
 
@@ -680,11 +680,11 @@ void Main(string[] args) {
 
 ## Strings
 
-A `string` is an immutable value that is copied freely, as in C#: assigning it, passing it by value, returning it, and storing it in a field, an element or a tuple make a copy, and every copy stays usable. A struct or tuple whose only members that hold something are strings is copied freely too. Nothing about strings is ever refused by the borrow rules.
+A `string` is an immutable value that is copied freely: assigning it, passing it by value, returning it, and storing it in a field, an element or a tuple make a copy, and every copy stays usable. A struct or tuple whose only members that hold something are strings is copied freely too. Nothing about strings is ever refused by the borrow rules.
 
 Underneath, a computed string (made by `+`, an interpolation or a library call) is one block: a reference count followed by the bytes. Every holder (a variable, a field, an element, a by-value parameter, a temporary of a statement) keeps one count, and the last one to go frees the block, at the same points where owned values are dropped. A string literal is static and is never counted or freed. `a + b + c` makes one string, with one allocation. `NZ_ALLOC_REPORT=1` prints the computed strings still alive at exit on a second line, `nz: live strings = M`, and `Diag.LiveStrings()` returns that count while the program runs. Strings reached from an `Arc<T>` payload are counted with atomic operations, so they may be released on any thread. (They are marked when the `Arc` is made, which is enough because an `Arc` payload cannot change; when `Mutex<T>` is added, every string stored into a place reachable from another thread will have to be marked at the store.)
 
-An `in string` (or `in string?`) parameter holds a counted copy of the argument, made when the call starts. **This differs from C#**, where `in` is a read-only reference: a callee that replaces the original through another path (a shared object, a `ref` of the same variable, a static) still sees the value the call started with. The same program in C# prints `new` twice.
+An `in string` (or `in string?`) parameter holds a counted copy of the argument, made when the call starts. A callee that replaces the original through another path (a shared object, a `ref` of the same variable, a static) still sees the value the call started with.
 
 ```nz output="old\nnew\n"
 package main;
@@ -766,7 +766,7 @@ void Main(string[] args) {
 
 A static is a place with one storage for the whole program, like a variable that never goes out of scope: it can be passed by `ref`, and two `ref` arguments naming it overlap. Rules are not suspended inside `unsafe`: `unsafe` allows the use of mutable statics and the pointer features of [Pointers and `fixed`](#pointers-and-fixed), nothing more.
 
-An **owned static** (guide section 1.9) owns its value for the whole program. Nothing moves out of it, as out of a field; assigning drops the old value once the new one is computed; the program drops it at normal exit in reverse declaration order.
+An **owned static** (guide section [5.16](../05-object-oriented-programming.md#516-static)) owns its value for the whole program. Nothing moves out of it, as out of a field; assigning drops the old value once the new one is computed; the program drops it at normal exit in reverse declaration order.
 
 Any call may replace a static, and the analysis sees one function at a time. So while a `foreach` iterates over something an owned static holds, while a pattern variable borrows from one, while an argument or receiver already holds part of one, or while an assignment or index has fixed an object inside one, a call that may run NZ code is refused or ends the borrow. A `ref` to the whole static is the exception: it is an address, read when the callee runs.
 
@@ -833,7 +833,7 @@ Any holder can change a shared object, so the compiler cannot see every borrow o
 
 ### `foreach` through a handle
 
-A `foreach` over a `Shared<T>` or an `Arc<T>` whose payload is a list or an array walks the payload, as iterating a reference to a `List<int>` does in C#. The loop variable borrows each element, as over a plain list, and the handle the loop walks is frozen like any collection: adding to the list through it in the body, assigning one of its elements or replacing the handle is an error.
+A `foreach` over a `Shared<T>` or an `Arc<T>` whose payload is a list or an array walks the payload. The loop variable borrows each element, as over a plain list, and the handle the loop walks is frozen like any collection: adding to the list through it in the body, assigning one of its elements or replacing the handle is an error.
 
 ```nz output="6 3\n"
 package main;
@@ -857,7 +857,7 @@ void Main(string[] args) {
 }
 ```
 
-Another handle to the same object is out of the compiler's sight, so the loop lends a `Shared` object for reading until it is left by any path (the end, `break`, `return`, a labeled jump). Adding to the list or replacing it through another handle, or lending it for writing, stops the program with the messages above instead of reading freed memory. The loop variable can change its element, as in C#: replace a part of it that owns something (`c.Items = new List<int>()`), add to such a part, or call a method that changes it. Such a change is checked when the program runs as well, without counting the loop's own lend: it runs while nothing else borrows the object, and stops the program with `nz: shared object changed while it is lent` while another loop or call, through another handle, may be using a part of it. Lends are counted per object, so a second loop over the same object, open around the change, stops it too. A method that changes the element, called through the loop variable, holds the object for writing while it runs, so if its body lends the object again (a loop over it through another handle, say) the program stops with `nz: shared object lent for reading while a part of it is lent for writing`. The same holds for a loop over a member (`foreach (var c in s.Items)`), for a loop over a part of the loop variable, and for a pattern variable bound under it. An element that owns nothing, such as an `int`, can be written through another handle; the loop sees the new value.
+Another handle to the same object is out of the compiler's sight, so the loop lends a `Shared` object for reading until it is left by any path (the end, `break`, `return`, a labeled jump). Adding to the list or replacing it through another handle, or lending it for writing, stops the program with the messages above instead of reading freed memory. The loop variable can change its element: replace a part of it that owns something (`c.Items = new List<int>()`), add to such a part, or call a method that changes it. Such a change is checked when the program runs as well, without counting the loop's own lend: it runs while nothing else borrows the object, and stops the program with `nz: shared object changed while it is lent` while another loop or call, through another handle, may be using a part of it. Lends are counted per object, so a second loop over the same object, open around the change, stops it too. A method that changes the element, called through the loop variable, holds the object for writing while it runs, so if its body lends the object again (a loop over it through another handle, say) the program stops with `nz: shared object lent for reading while a part of it is lent for writing`. The same holds for a loop over a member (`foreach (var c in s.Items)`), for a loop over a part of the loop variable, and for a pattern variable bound under it. An element that owns nothing, such as an `int`, can be written through another handle; the loop sees the new value.
 
 ```nz output="2 3\n"
 package main;
@@ -982,7 +982,7 @@ Dropping shared objects needs a bounded C stack whatever their shape, as for own
 
 ## Constructors and object initializers
 
-`new T(args)` passes each argument to the chosen [constructor](../README.md#constructors) by the mode of the parameter it binds to: an argument without a modifier is **moved** into the constructor, an `in` or `ref` argument is lent for the call. A parameter the constructor stores in a field belongs to the new object from then on; one it does not store is dropped when the constructor returns, as in any method (also on an early `return`). The same variable passed twice by value is a use after a move:
+`new T(args)` passes each argument to the chosen [constructor](../05-object-oriented-programming.md#57-constructor) by the mode of the parameter it binds to: an argument without a modifier is **moved** into the constructor, an `in` or `ref` argument is lent for the call. A parameter the constructor stores in a field belongs to the new object from then on; one it does not store is dropped when the constructor returns, as in any method (also on an early `return`). The same variable passed twice by value is a use after a move:
 
 ```nz error="use of moved value"
 package main;
@@ -1033,11 +1033,11 @@ void Main(string[] args) {
 
 ## Named arguments and extension receivers
 
-The rules below apply to NZ code (C# style) as written in section 1.12 of the README.
+The rules below apply to NZ code as written in section [3.7](../03-functional-programming.md#37-function-parameters) of the guide.
 
 Arguments are moved and borrowed **in the order they are written**, whatever parameters they bind to by name; each one is moved or lent with the mode of the parameter it binds to, and a parameter left to its default takes nothing. So `Pair(second: a, first: a)` moves `a` twice and is refused at the second, as written.
 
-The receiver of an [extension method](../README.md#112-parameters-and-arguments) is its first parameter. It is lent by that parameter's mode, `this in` for reading and `this ref` for writing, and never moved (a plain `this` is only allowed on copied types, where it is a copy). A `this ref` receiver counts as a receiver the call changes, so it cannot share storage with an argument of the same call, and it cannot change a collection a `foreach` iterates:
+The receiver of an [extension method](../03-functional-programming.md#37-function-parameters) is its first parameter. It is lent by that parameter's mode, `this in` for reading and `this ref` for writing, and never moved (a plain `this` is only allowed on copied types, where it is a copy). A `this ref` receiver counts as a receiver the call changes, so it cannot share storage with an argument of the same call, and it cannot change a collection a `foreach` iterates:
 
 ```nz error="overlapping borrow"
 package main;
@@ -1056,7 +1056,7 @@ Through a `Shared<T>` handle, the extension's receiver is the shared object, len
 
 ## Properties with accessors
 
-A computed property (accessors with bodies, guide section 2.1) has no storage: reading it is a call of its getter, assigning it a call of its setter, so every rule of a method call applies, with the receiver lent the way the accessor needs it. A getter's result is a new value, like a call's: a getter cannot move a field out (`return items;` of an owned field is the field rule), and its result can be kept, lent to an `in` parameter for the call, or dropped at the end of the statement. A setter takes `value` by value, so an owned value assigned to a computed property moves:
+A computed property (accessors with bodies, guide section [5.3](../05-object-oriented-programming.md#53-property-and-method)) has no storage: reading it is a call of its getter, assigning it a call of its setter, so every rule of a method call applies, with the receiver lent the way the accessor needs it. A getter's result is a new value, like a call's: a getter cannot move a field out (`return items;` of an owned field is the field rule), and its result can be kept, lent to an `in` parameter for the call, or dropped at the end of the statement. A setter takes `value` by value, so an owned value assigned to a computed property moves:
 
 ```nz error="use of moved value"
 package main;
@@ -1080,7 +1080,7 @@ A getter or setter that changes its object is a call that changes its receiver: 
 
 ## Pointers and `fixed`
 
-Inside `unsafe` a program has pointers (guide section 1.13). This is what `unsafe` turns **on**, and nothing else: pointer types and operators, `sizeof` of unmanaged types, `stackalloc`, `fixed`, `NativeMemory`, calls to `extern` functions and to functions with pointers in their signature, and mutable statics. What **stays checked** inside `unsafe`: types, definite assignment, null safety, integer overflow and checked casts, array and list indexes, and the ownership and borrowing of managed values (classes, strings, arrays, lists, owned structs, tuples). Only pointer arithmetic and `p[i]` are unchecked.
+Inside `unsafe` a program has pointers (guide section [1.1.4](../01-basic.md#114-pointer)). This is what `unsafe` turns **on**, and nothing else: pointer types and operators, `sizeof` of unmanaged types, `stackalloc`, `fixed`, `NativeMemory`, calls to `extern` functions and to functions with pointers in their signature, and mutable statics. What **stays checked** inside `unsafe`: types, definite assignment, null safety, integer overflow and checked casts, array and list indexes, and the ownership and borrowing of managed values (classes, strings, arrays, lists, owned structs, tuples). Only pointer arithmetic and `p[i]` are unchecked.
 
 Why managed values stay sound:
 
@@ -1089,7 +1089,7 @@ Why managed values stay sound:
 - **A pointer cannot leave `unsafe`.** A pointer type can be written, and a pointer value can exist, only in an unsafe context, so a pointer cannot flow into safe code by assignment, return, field, capture, type argument, tuple or optional. The only way out is a cast to `nint` or `nuint`; turning that number back into a pointer needs `unsafe` again.
 - **Pointers are copied and never moved.** For the checker a pointer is a `Copy` value with no drop glue; no loan is recorded for `&x`, whose target is unmanaged. A struct with pointer fields is `Copy` when its other fields are; a class with pointer fields stays an owner, and its drop frees the object, never what the pointers point at.
 
-What `unsafe` vouches for, as in C# and Rust: a pointer to a local that has gone out of scope (`return &x;` from an `unsafe` function is accepted, as in C#), a write past the end of a buffer, a misaligned read through a pointer cast, a write through a pointer into an object lent by `in`, a double `Free`. The compiler does not see these; the sanitizers find them in tests. A pointer write can also corrupt memory next to its target, including a managed object's fields: that is undefined behaviour, which the program that writes `unsafe` takes on.
+What `unsafe` vouches for, as in Rust: a pointer to a local that has gone out of scope (`return &x;` from an `unsafe` function is accepted), a write past the end of a buffer, a misaligned read through a pointer cast, a write through a pointer into an object lent by `in`, a double `Free`. The compiler does not see these; the sanitizers find them in tests. A pointer write can also corrupt memory next to its target, including a managed object's fields: that is undefined behaviour, which the program that writes `unsafe` takes on.
 
 A static cannot be a `fixed` root yet, because a static starts with a constant and owns no array or object to pin. When statics with computed initializers arrive, `fixed` over one must follow the rule of [Statics](#statics): any call may replace a static, so a call that may run NZ code ends the freeze.
 

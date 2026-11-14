@@ -1,6 +1,6 @@
 # Error Handling
 
-This guide explains what NZ code (C# style) does when something goes wrong, today. Read it to judge what is right and what is wrong. Sections 1 to 7 describe what the compiler does now. Section 8 describes a plan that is **not implemented**.
+This guide explains what NZ code does when something goes wrong, today. Read it to judge what is right and what is wrong. Sections 1 to 7 describe what the compiler does now. Section 8 describes syntax that is **not available**.
 
 Every statement in sections 1 to 7 is checked by tests:
 
@@ -8,7 +8,7 @@ Every statement in sections 1 to 7 is checked by tests:
 - A block that stops the program cannot be an `output` block, because the docs test wants exit code 0. These blocks carry `stderr="..."` (and sometimes `exit="..."` and `stdout="..."`). A second test builds and runs them and compares what the program printed on standard error, its exit code and its standard output with the text in the block.
 - Three rows of the table in section 2 are marked with a dagger. They need a huge memory size or a deep call stack, so no test runs them. They were run by hand.
 
-Section 8 is not checked by any test, because the feature does not exist.
+Section 8 is not checked by any test, because the feature is not available.
 
 ## 1. Overview
 
@@ -38,8 +38,8 @@ When the program stops, standard output is flushed first, so what was printed be
 
 The message has one of two shapes:
 
-- **A language error** has no .NET exception name: `nz: integer overflow`. The language itself found the problem.
-- **A standard library error** carries the name of the exception .NET would throw, and .NET's message: `nz: KeyNotFoundException: The given key 'x' was not present in the dictionary.` The text after `nz: ` is `<ExceptionName>: <message>`.
+- **A language error** has no exception name: `nz: integer overflow`. The language itself found the problem.
+- **A standard library error** carries the name of the exception type and the exception's standard message: `nz: KeyNotFoundException: The given key 'x' was not present in the dictionary.` The text after `nz: ` is `<ExceptionName>: <message>`.
 
 In the examples a value is read from `args.Length` (which is 0) so the compiler cannot compute the result itself and refuse it earlier.
 
@@ -184,7 +184,7 @@ The other lend messages (`shared object lent for writing while a part of it is l
 
 ### Errors of the standard library
 
-A standard library member that would throw in .NET stops the program with `nz: <ExceptionName>: <.NET's message>`. Messages that name a path name the full path, as .NET's do. These rows were run:
+A standard library member that fails stops the program with `nz: <ExceptionName>: <the exception's standard message>`. Messages that name a path name the full path. These rows were run:
 
 | Call | Printed on standard error |
 |---|---|
@@ -198,7 +198,7 @@ A standard library member that would throw in .NET stops the program with `nz: <
 | `"abc"[5]` | `nz: IndexOutOfRangeException: Index was outside the bounds of the array.` |
 | `File.ReadAllText("/no-such-file-nz.txt")` | `nz: FileNotFoundException: Could not find file '/no-such-file-nz.txt'.` |
 
-Notice that the index of an array or list stops with the language's own `nz: index out of range`, and the index of a string with .NET's `IndexOutOfRangeException`.
+Notice that the index of an array or list stops with the language's own `nz: index out of range`, and the index of a string with `IndexOutOfRangeException`.
 
 ```nz stderr="nz: KeyNotFoundException: The given key 'x' was not present in the dictionary."
 package main;
@@ -271,7 +271,7 @@ void Main(string[] args) {
 
 ### Arithmetic is checked, `unchecked` turns it off
 
-C# wraps around on overflow unless the code is `checked`. NZ is the other way round: arithmetic and casts are checked unless the code is written inside `unchecked`, as in C#:
+Arithmetic and casts are checked unless the code is written inside `unchecked`:
 
 ```nz output="44 -2147483648\n"
 package main;
@@ -289,7 +289,7 @@ void Main(string[] args) {
 
 `checked(...)` is accepted too and means the default, so `checked(a + 1)` with `a` = 2147483647 stops with `nz: integer overflow`.
 
-Real numbers never stop on division by zero. `1.0 / z` with `z` = 0.0 is `Infinity`, as in C# (the cast of that to `int` is the stop in the table).
+Real numbers never stop on division by zero. `1.0 / z` with `z` = 0.0 is `Infinity` (the cast of that to `int` is the stop in the table).
 
 ### What `Main` can return
 
@@ -354,11 +354,11 @@ void Main(string[] args) {
 }
 ```
 
-`Abort` never returns, so a function that returns a value may end with `Abort(...)` and have no `return`. `Abort` and `Assert` are calls with no value, so `var x = Abort("m");` is an error. The README (section 1.7) lists the current limits of how the compiler treats code after `Abort`.
+`Abort` never returns, so a function that returns a value may end with `Abort(...)` and have no `return`. `Abort` and `Assert` are calls with no value, so `var x = Abort("m");` is an error. The guide (section [6.1](../06-exceptions-and-error-handling.md#61-creating-errors)) lists the current limits of how the compiler treats code after `Abort`.
 
 ## 4. Result, Ok, Err and the `?` operator
 
-A function that can fail in an expected way returns `Result<T, E>`. It holds either `Ok<T>` with the value or `Err<E>` with the error. `Result`, `Ok` and `Err` need no `import`. They are declared in NZ code (C# style):
+A function that can fail in an expected way returns `Result<T, E>`. It holds either `Ok<T>` with the value or `Err<E>` with the error. `Result`, `Ok` and `Err` need no `import`. They are declared in NZ code:
 
 ```nz-api
 public union Result<T, E>(Ok<T>, Err<E>);
@@ -407,7 +407,7 @@ A `switch` that forgets a case gets a warning. A `Result` is an ordinary value: 
 
 ### Passing an error on with `?`
 
-Writing `?` after an expression means: if this is an error, leave the function with that error now. On a `Result<T, E>`, `?` gives the `Ok` value, or makes the enclosing function return the `Err`. On a `T?`, `?` gives the value, or makes the function return `null`. C# has no such operator (it throws exceptions); NZ takes it from Rust.
+Writing `?` after an expression means: if this is an error, leave the function with that error now. On a `Result<T, E>`, `?` gives the `Ok` value, or makes the enclosing function return the `Err`. On a `T?`, `?` gives the value, or makes the function return `null`. NZ takes this operator from Rust.
 
 ```nz output="digits 1234\nbad character at 2 in 12x4\n"
 package main;
@@ -531,7 +531,7 @@ Only `?` can be a statement this way. `Check();` alone keeps its `Result` as a d
 - **`Main` cannot use `?`**, because `Main` returns `void` or `int`.
 - **`?` cannot stand inside a `defer`**, nor in a field, constant or static initializer.
 - **`?` can stand anywhere an expression can**: in an argument, a condition, an arm of `?:`, `??`, `&&`, `||` or `switch`, in an interpolation hole and in a loop header. In a local function it leaves that local function.
-- **Reading `?` next to the conditional operator.** After an expression, a `?` followed by a token that can start an expression is the conditional operator `c ? a : b`, as in C#. So `f()? - 1` is a conditional (and an error without its `:`). Write `(f()?) - 1` to pass the error on and then subtract.
+- **Reading `?` next to the conditional operator.** After an expression, a `?` followed by a token that can start an expression is the conditional operator `c ? a : b`. So `f()? - 1` is a conditional (and an error without its `:`). Write `(f()?) - 1` to pass the error on and then subtract.
 - **`x?` does not make `x` non-null afterwards.**
 
 Each limit is checked:
@@ -626,7 +626,7 @@ void Main(string[] args) {
 
 ## 5. The Try twins and IOError
 
-A standard library member that does I/O stops the program when it fails, as .NET's member would throw (section 2). The members a command-line tool needs also have a `Try` twin. A twin takes the same arguments and does the same work, but returns a `Result<T, IOError>` instead of stopping. The `Try` members are NZ's own: .NET has none.
+A standard library member that does I/O stops the program when it fails, as section 2 shows. The members a command-line tool needs also have a `Try` twin. A twin takes the same arguments and does the same work, but returns a `Result<T, IOError>` instead of stopping. The `Try` members are NZ's own.
 
 | Member | Returns | Same work as |
 |---|---|---|
@@ -641,16 +641,16 @@ A standard library member that does I/O stops the program when it fails, as .NET
 | `Directory.TryGetFiles(path)`, `(path, searchPattern)` | `Result<string[], IOError>` | `Directory.GetFiles` |
 | `Directory.TryDelete(path)`, `(path, recursive)` | `Result<bool, IOError>` | `Directory.Delete` |
 
-A member that returns nothing in .NET returns `Result<bool, IOError>` whose `Ok` value is always `true`. Use `?` or a `switch` on the `Err`. As in .NET, deleting a file that is not there is not an error (`File.TryDelete` of a missing file is `Ok`).
+A member that returns nothing returns `Result<bool, IOError>` whose `Ok` value is always `true`. Use `?` or a `switch` on the `Err`. Deleting a file that is not there is not an error (`File.TryDelete` of a missing file is `Ok`).
 
 `IOError` is a small struct. `IOError` and `IOErrorKind` are visible in every file without an import.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `Message` | `string` | exactly the text .NET puts in the exception message; the stopping member prints it after `nz: <ExceptionName>: ` |
+| `Message` | `string` | exactly the exception's standard message; the stopping member prints it after `nz: <ExceptionName>: ` |
 | `Kind` | `IOErrorKind` | what went wrong, in the table below |
 
-| `IOErrorKind` | When | .NET exception |
+| `IOErrorKind` | When | Exception named by the stopping member |
 |---|---|---|
 | `NotFound` | a file is missing | `FileNotFoundException` |
 | `DirectoryNotFound` | a folder on the way is missing | `DirectoryNotFoundException` |
@@ -658,7 +658,7 @@ A member that returns nothing in .NET returns `Result<bool, IOError>` whose `Ok`
 | `AlreadyExists` | the target already exists, such as `CreateDirectory` over a file | `IOException` |
 | `Other` | everything else: an empty path, a folder that is not empty, a full disk | the other exceptions |
 
-The checks .NET makes on its arguments become errors too: `File.TryReadAllText("")` is an `Err` of kind `Other` holding `The value cannot be an empty string. (Parameter 'path')`, where `File.ReadAllText("")` stops with that text. Only a failure the operating system reports is returned. Running out of memory still stops the program.
+The checks a member makes on its arguments become errors too: `File.TryReadAllText("")` is an `Err` of kind `Other` holding `The value cannot be an empty string. (Parameter 'path')`, where `File.ReadAllText("")` stops with that text. Only a failure the operating system reports is returned. Running out of memory still stops the program.
 
 This program shows each kind on a Linux machine. It prints only the kind, because the messages hold full paths:
 
@@ -725,7 +725,7 @@ void Main(string[] args) {
 NZ frees memory without a garbage collector: a value is dropped when its owner leaves scope. Errors keep this rule in the two cases:
 
 - **A `?` that finds an error leaves the function exactly as `return` would.** Every local variable that owns something and every `defer` of every open scope is dropped or run, innermost scope first, and so is what the half-built statement holds. Nothing leaks. The details are in [Ownership: `?` leaves the function like `return`](Ownership.md#-leaves-the-function-like-return).
-- **A `finally` block runs on every way out of its `try` block**, as in C#: the end of the block, `return`, `break`, `continue` and `?`. See "`try` and `finally`" below.
+- **A `finally` block runs on every way out of its `try` block**: the end of the block, `return`, `break`, `continue` and `?`. See "`try` and `finally`" below.
 - **A stop does not clean up.** `Abort`, a failed `Assert` and every runtime error end the process on the spot. Owned values are not dropped, `defer` statements do not run, and the `NZ_ALLOC_REPORT=1` report of live objects is not printed. The operating system takes the memory back when the process ends.
 
 The first program fails in the middle of a loop, and the count of live objects is back to what it was:
@@ -835,7 +835,7 @@ Nothing named `deferred` is printed.
 
 ### `try` and `finally`
 
-`try { ... } finally { ... }` works as in C#. The `finally` block runs after the `try` block on every way out of it: when the block ends, and at a `return`, `break`, `continue` or `?` inside it. The `defer` statements and drops of the scopes inside the `try` block run first, then the `finally` block, then those of the scopes outside it: one reverse order, as `defer` has.
+`try { ... } finally { ... }` works. The `finally` block runs after the `try` block on every way out of it: when the block ends, and at a `return`, `break`, `continue` or `?` inside it. The `defer` statements and drops of the scopes inside the `try` block run first, then the `finally` block, then those of the scopes outside it: one reverse order, as `defer` has.
 
 ```nz output="work\nnot found\ncleanup\n-1\n"
 package main;
@@ -859,7 +859,7 @@ void Main(string[] args) {
 }
 ```
 
-A `return` computes its value before the `finally` block runs, so the `finally` block cannot change what is returned (C#):
+A `return` computes its value before the `finally` block runs, so the `finally` block cannot change what is returned:
 
 ```nz output="finally sets 2\n1\n"
 package main;
@@ -880,7 +880,7 @@ void Main(string[] args) {
 }
 ```
 
-Control cannot leave a `finally` block: `return`, `?`, and a `break` or `continue` to a loop outside it are errors (C# CS0157). Loops and `break` inside it are fine.
+Control cannot leave a `finally` block: `return`, `?`, and a `break` or `continue` to a loop outside it are errors. Loops and `break` inside it are fine.
 
 ```nz fragment error="control cannot leave a `finally` block"
 try {
@@ -890,7 +890,7 @@ try {
 }
 ```
 
-The compiler reads a `finally` block as C# does: it may run after any part of the `try` block. A value moved anywhere in the `try` block counts as possibly moved in the `finally` block, even if the `try` block gives the variable a new value later:
+The compiler assumes a `finally` block may run after any part of the `try` block. A value moved anywhere in the `try` block counts as possibly moved in the `finally` block, even if the `try` block gives the variable a new value later:
 
 ```nz error="may have been moved"
 package main;
@@ -912,44 +912,35 @@ void Main(string[] args) {
 
 A runtime error inside the `try` block is still a stop: the program ends at once, and the `finally` block does not run. `catch` and `throw` are not supported yet: they need exception classes (section 8).
 
-## 7. Side by side with C#
+## 7. Notes
 
-NZ code (C# style) reads like C#, but its errors work differently. Each row says what C# does and what NZ does.
-
-### Same as C#
-
-| Topic | C# | NZ |
-|---|---|---|
-| Result of a failed `int.Parse` | throws `FormatException` with the message shown in section 2 | stops the program with the same exception name and message |
-| Missing dictionary key | `KeyNotFoundException` | the same name and message, but the program stops |
-| `Nullable<T>.Value` of `null` | `InvalidOperationException: Nullable object must have a value.` | the same text, but the program stops |
-| Division of reals by zero | `Infinity` or `NaN` | the same |
-| `switch` expression with no matching arm | `SwitchExpressionException` | the same name, but the program stops |
-| `unchecked(...)` | wraps around | the same |
-| Exit code of `Main` | `int Main` returns the process exit code; `void Main` gives 0 | the same |
-| Constant that overflows, constant divided by zero | a compile-time error | the same |
-
-### Different from C#
-
-| Topic | C# | NZ |
-|---|---|---|
-| `try`, `catch`, `finally`, `throw` | exist | `try`/`finally` works as in C# (section 6). **A gap today**: `catch` and `throw` are not supported yet, and a program error ends the program. Planned to match C# (section 8) |
-| `Exception` and its classes | exist | **a gap today**: `Exception` is an unknown type. Planned to match C# (section 8) |
-| An uncaught error | prints a stack trace and ends the program with a code that depends on the system | prints one line, `nz: <message>` or `nz: <ExceptionName>: <message>`, and exits with 1 |
-| Cleanup when an error ends the program | `finally` blocks and `using` run while the exception unwinds, if something catches it; with no catch, it is not guaranteed | no cleanup: no drop, no `defer` (section 6) |
-| Integer overflow | wraps unless `checked` | stops unless `unchecked` |
-| A cast to a narrower integer | wraps unless `checked` | stops unless `unchecked` |
-| Division by zero of integers | `DivideByZeroException` | `nz: division by zero` |
-| Index outside an array | `IndexOutOfRangeException` | `nz: index out of range` |
-| Index outside a `List<T>` | `ArgumentOutOfRangeException` | `nz: index out of range` |
-| `null` | any reference type may be `null`; a nullable annotation is only a warning | no `null` in a non-optional type: `string s = null;` is an error; `T?` is an optional that the compiler makes you check before use |
-| Using a null reference | `NullReferenceException` at run time | cannot happen for a non-optional; an unchecked `T?` is refused when compiling (only `Nullable` `.Value` can stop, as above) |
-| No-throw form of a failing call | `int.TryParse(s, out v)` and similar `Try` members | errors are values: `File.TryReadAllText` returns `Result<string, IOError>`, with `?` to pass the error on. This stays when exceptions arrive (section 8) |
-| `File.ReadAllText` of a missing file | throws | **a gap today**: stops the program. Planned to throw as .NET does (section 8) |
-| `?` operator | no such operator (`?.` and `??` are other operators) | `x?` leaves the function with the error |
-| `int.TryParse(s, out v)` | returns `bool`, value in `out` | `int? n = int.TryParse(s);` returns an optional; there is no `out` |
-| Checking a promise | `Debug.Assert` is removed from release builds | `Assert` is built in and always on; `Abort` stops the program with a message |
-| Main with another return type, for example `Task` or a result | allowed | `Main` is `void` or `int`; a `Result` cannot be returned |
+| Topic | NZ |
+|---|---|
+| A failed `int.Parse` | stops the program with `FormatException` and the message shown in section 2 |
+| Missing dictionary key | stops the program with `KeyNotFoundException` and the message shown in section 2 |
+| `Nullable<T>.Value` of `null` | stops the program with `InvalidOperationException: Nullable object must have a value.` |
+| Division of reals by zero | `Infinity` or `NaN` |
+| `switch` expression with no matching arm | stops the program with `SwitchExpressionException` |
+| `unchecked(...)` | wraps around |
+| Exit code of `Main` | `int Main` returns the process exit code; `void Main` gives 0 |
+| Constant that overflows, constant divided by zero | a compile-time error |
+| `try`, `catch`, `finally`, `throw` | `try`/`finally` works (section 6). `catch` and `throw` are not available, and a program error ends the program (section 8) |
+| `Exception` and its classes | not available: `Exception` is an unknown type (section 8) |
+| An uncaught error | prints one line, `nz: <message>` or `nz: <ExceptionName>: <message>`, and exits with 1 |
+| Cleanup when an error ends the program | no cleanup: no drop, no `defer` (section 6) |
+| Integer overflow | stops unless `unchecked` |
+| A cast to a narrower integer | stops unless `unchecked` |
+| Division by zero of integers | `nz: division by zero` |
+| Index outside an array | `nz: index out of range` |
+| Index outside a `List<T>` | `nz: index out of range` |
+| `null` | no `null` in a non-optional type: `string s = null;` is an error; `T?` is an optional that the compiler makes you check before use |
+| Using a null reference | cannot happen for a non-optional; an unchecked `T?` is refused when compiling (only `Nullable` `.Value` can stop, as above) |
+| No-throw form of a failing call | errors are values: `File.TryReadAllText` returns `Result<string, IOError>`, with `?` to pass the error on |
+| `File.ReadAllText` of a missing file | stops the program (section 2) |
+| `?` operator | `x?` leaves the function with the error |
+| `int.TryParse(s)` | `int? n = int.TryParse(s);` returns an optional; there is no `out` |
+| Checking a promise | `Assert` is built in and always on; `Abort` stops the program with a message |
+| `Main` with another return type | `Main` is `void` or `int`; a `Result` cannot be returned |
 
 ```nz fragment error="not supported yet: `throw`"
 throw new Exception("x");
@@ -959,15 +950,13 @@ throw new Exception("x");
 Exception e = null;
 ```
 
-## 8. Planned (not implemented)
+## 8. Exceptions (not available)
 
-This section describes a plan. **None of it works today**, and it carries no promise of a date. It is not checked by any test.
-
-The plan is to give NZ C#'s exceptions, with C# syntax: `throw`, `try`, `catch` and `finally` (`try`/`finally` without `catch` works already, section 6).
+None of this works today, and no test checks it. The syntax is `throw`, `try`, `catch` and `finally` (`try`/`finally` without `catch` works, section 6).
 
 - **Program errors** (an overflow, a division by zero, an index out of range, a failed `Assert`) would throw an exception that a `try`/`catch` can catch. An uncaught exception would still end the program.
-- **Standard library members would throw as .NET's do.** `File.ReadAllText` would throw `FileNotFoundException`, a bad `int.Parse` would throw `FormatException`, and so on, instead of stopping the program.
-- **The no-throw option stays.** The `Try` twins (`File.TryReadAllText` returning `Result<T, IOError>`, `int.TryParse` returning an optional) and `Result` with the `?` operator remain, for code that wants a plain value instead of an exception. This is the same pair .NET offers with `Parse` and `TryParse`.
+- **Standard library members** would throw the exceptions named in section 2: `File.ReadAllText` would throw `FileNotFoundException`, a bad `int.Parse` would throw `FormatException`, and so on, instead of stopping the program.
+- **The no-throw option stays.** The `Try` twins (`File.TryReadAllText` returning `Result<T, IOError>`, `int.TryParse` returning an optional) and `Result` with the `?` operator remain, for code that wants a plain value instead of an exception.
 
 A sketch, in a `text` block because it does not compile today:
 
@@ -989,5 +978,3 @@ Result<string, IOError> ReadNoThrow(string path) {
     return new Ok<string>(text);
 }
 ```
-
-When this is done, sections 1 to 7 will change, and this guide will be updated with it.
