@@ -2620,6 +2620,116 @@ void Main(string[] args) {
 
 Not supported yet: an indexer with several parameters, more than one indexer or more than one operator with the same symbol in a type, an indexer written without `public` or `private`, an indexer or operator in an interface, operators of a generic type, conversion operators (`implicit`, `explicit`) and `true`/`false`, and using the value of a user `++` or `--` (write it as a statement).
 
+### Nested types
+
+A `class`, `struct`, `record`, `enum` or `union` may be declared inside a class, struct, record or union (C#'s nested types). Inside the enclosing type its bare name is enough; from outside it is written `Outer.Inner`, as a type and in expressions (`new Outer.Inner()`, `Outer.Inner.Make()`, `Outer.Mode.Fast`). A nested type is an ordinary type: it has its own members, constructors and static members, it is owned, copied and dropped like a top-level one, and it may be nested further.
+
+```nz output="1 2\n"
+package main;
+
+import std.io.Console;
+
+public class Shape {
+    public class Point {
+        public int X = 1;
+        public int Y = 2;
+    }
+
+    public Point Origin() { return new Point(); }
+}
+
+void Main(string[] args) {
+    var p = new Shape().Origin();
+    Shape.Point q = p;
+    Console.WriteLine($"{q.X} {q.Y}");
+}
+```
+
+A nested type is **private to its enclosing type** unless it is written `public`: only the enclosing type, and the types declared inside it, can name it. A nested type can also use every private member of the types around it, as in C#; the enclosing type cannot use the private members of a nested type. A type name written inside the enclosing type finds the nested types before the top-level ones, so a nested `Node` hides a top-level `Node` there. Two enclosing types may each declare a nested type of the same name.
+
+```nz error="nested type `Hidden` is private to `Outer`"
+package main;
+
+class Outer {
+    class Hidden { }
+}
+
+void Main(string[] args) {
+    var h = new Outer.Hidden();
+}
+```
+
+```nz output="9\n"
+package main;
+
+import std.io.Console;
+
+class Outer {
+    int secret = 9;
+
+    public class Peek {
+        public int Read(in Outer o) { return o.secret; }
+    }
+}
+
+void Main(string[] args) {
+    Console.WriteLine($"{new Outer.Peek().Read(new Outer())}");
+}
+```
+
+The nested type of a **generic** type takes the type parameters of the enclosing type first: `Box<int>.Cell` and `Box<string>.Cell` are different types, and inside `Box<T>` the name `Cell` means `Box<T>.Cell`. A nested type may declare parameters of its own (`Outer<int>.Pair<string>`).
+
+```nz output="12\n"
+package main;
+
+import std.io.Console;
+
+public class Box<T> {
+    public class Cell {
+        public T? Value;
+    }
+
+    public Cell C = new Cell();
+}
+
+void Main(string[] args) {
+    var b = new Box<int>();
+    b.C.Value = 12;
+    Console.WriteLine($"{b.C.Value}");
+}
+```
+
+A dotted path written inside the generic type gets the same arguments (`I.K` inside `O<T>` is `O<T>.I.K`), and a nested type is reached through an alias of an instantiated type (`type A = O<int>;`, `A.I`).
+
+```nz output="3 5\n"
+package main;
+
+import std.io.Console;
+
+class O<T> {
+    public class I {
+        public class K { public int V = 3; }
+        public T? A;
+    }
+
+    public int Get() { var k = new I.K(); return k.V; }
+}
+
+type Alias = O<int>;
+
+void Main(string[] args) {
+    var i = new Alias.I();
+    i.A = 5;
+    Console.WriteLine($"{new O<string>().Get()} {i.A}");
+}
+```
+
+A bare name inside a nested type finds the member of the nearest enclosing type that has that name. A static member (a constant, a static field or method) is used as it stands; an instance member there is an error (C# CS0120), because a nested type has no object of its enclosing type of its own. A nested enum may use the constants of its enclosing type by their bare names.
+
+An `import` names a top-level declaration only: import `geo.Shape` and write `Shape.Point`. Importing `geo.Shape.Point` is an error that says so. A nested type cannot have the name of its enclosing type, of a member of it, or of a type parameter of the types around it. A package whose path equals the path of a type that has nested types is an error (the path `a.b.C` would name two things). In the generated C a nested type has its own name, built from its whole path, so it never meets a top-level type such as `Outer_Inner`.
+
+Not supported yet: a type nested in an interface, a `static` nested type (there are no static classes), an enum nested in a generic type, and static members of a type nested in a generic type (a static member of a generic type is not supported at all yet).
+
 ## 2.2 Interface & Enum
 
 ```nz
