@@ -74,7 +74,7 @@ void Main(string[] args) {
 }
 ```
 
-The alias follows the rule of a pattern variable: it borrows the element until its last use, and anything that may change the collection or what holds it ends it (`Add`, `Remove`, `Clear`, `l[i] = ...`, replacing or moving `l` or its owner, passing it by `ref`, a method of the owner that may change it, on any path, in a loop's next iteration, a `defer` or a `when` guard). A use after that is an error:
+The alias follows the rule of a pattern variable: it borrows the element until its last use, and anything that may change the collection or what holds it ends it (`Add`, `Remove`, `Clear`, `l[i] = ...`, replacing or moving `l` or its owner, passing it by `ref`, a method of the owner that may change it (see below), on any path, in a loop's next iteration, a `defer` or a `when` guard). A use after that is an error:
 
 ```nz error="can no longer be used"
 package main;
@@ -94,6 +94,45 @@ void Main(string[] args) {
     Console.WriteLine(t.Kind);
 }
 ```
+
+A method of the owner ends the alias only when it may change the collection. The checker summarises, for every method, which fields of its object it may change: the fields it assigns, lends by `ref`, or changes through a method (its own, one of a field's object, or a library method such as `Add`), followed through the methods it calls, recursion included. A call ends an alias (or a pattern variable, or makes a `foreach` refuse the call) only if the summary includes the field the alias reads from, or a field holding it. So the usual parser pattern works: `Advance()` only writes `Pos` and `Error` only adds to `Errors`, so `t`, which reads `Tokens`, stays alive:
+
+```nz output="1 2\nat 1: bad\n"
+package main;
+
+import std.io.Console;
+import std.collections.List;
+
+class Token {
+    public int Kind;
+}
+
+class Parser {
+    public List<Token> Tokens = new List<Token>();
+    public int Pos;
+    public List<string> Errors = new List<string>();
+
+    public void Advance() { Pos++; }
+    public void Error(in Token t, string message) { Errors.Add($"at {t.Kind}: {message}"); }
+
+    public void Run() {
+        var t = Tokens[Pos];
+        Advance();
+        Error(t, "bad");
+        Console.WriteLine($"{t.Kind} {Tokens[Pos].Kind}");
+    }
+}
+
+void Main(string[] args) {
+    var p = new Parser();
+    p.Tokens.Add(new Token { Kind = 1 });
+    p.Tokens.Add(new Token { Kind = 2 });
+    p.Run();
+    Console.WriteLine(p.Errors[0]);
+}
+```
+
+The summary is conservative: a method that may change something it cannot place in one field counts as changing the whole object (an indexer or a computed property of the object itself, a method of an interface, a method without a body, `ref this`, a call the checker cannot resolve), and so does a summary of more than 16 fields. A method that changes a field and also changes something through a `Shared<T>` or `Arc<T>` handle or a pointer counts as changing the whole object; a change made only through a handle is checked when the program runs, by the handle's lend. A method is always lent its whole object for reading, so an argument passed by `ref` or moved still cannot share storage with the receiver.
 
 It is read-only, as an `in` parameter: `t.Kind = 1`, `t.Kind++`, a method that changes `t`, `ref` of `t` or of its parts, and assigning `t` are refused (change the element through the collection after the last use of `t`). The same holds for a variable that reads the element through `t`: a pattern variable (`t is Token x`, a `switch` case), or the variable of a `foreach` over a part of `t`. It cannot be moved either (`return t`, `other = t`, `l.Add(t)`, a by-value argument); pass it with `in`. Returning an element (`Token Cur(in List<Token> l, int i) { return l[i]; }`) stays refused: use the alias inside the function, or return a copy of the values you need.
 
