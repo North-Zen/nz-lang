@@ -10,6 +10,8 @@
 
 NZ is designed for many kinds of programs: kernels (`no_runtime`), web/app servers, and games.
 
+**Syntax reference.** This guide is a tour. For a construct-by-construct reference (syntax, a short example, whether it is available today, and how it differs from C#), see [Syntax Reference](+/Syntax-Reference.md).
+
 > ⚠️ Status: NZ programs now **compile to C and run** through `clang` (`nzc run`), after passing the lexer, parser and semantic analysis. **Ownership and borrow checking are active**: owned objects are freed deterministically, and strings are freed with their last holder (see [Ownership](+/Ownership.md) and [Compiler](+/Compiler.md)).
 
 ## Installation, Running Hello World

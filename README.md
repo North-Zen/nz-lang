@@ -29,6 +29,7 @@ void Main(string[] args) {
 ## Documentation
 
 - [Language guide](docs/README.md): the full tour of the language. Every `nz` code block in it is checked by the real compiler.
+- [Syntax reference](docs/+/Syntax-Reference.md): every construct with its syntax, an example, its status and how it differs from C#
 - [Ownership](docs/+/Ownership.md), [Memory model](docs/+/Memory-Model.md), [Null safety](docs/+/Null-Safety.md)
 - [Standard library](docs/+/Standard-Library.md), which follows .NET names and behaviour
 - [Compiler notes](docs/+/Compiler.md) and [Compiler API](docs/+/Compiler-API.md)
