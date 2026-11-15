@@ -2,13 +2,13 @@
 
 > NZ is still in development and is not stable. Anything in this documentation can change.
 
-**NZ** is a *systems* programming language that is memory safe and has **no garbage collector by default**. Its syntax is familiar to anyone who has written a C-family language, while its model takes the ideas of **ownership** and **borrowing**: a strong architecture, but with a syntax that is easier to read.
+**NZ** is a *systems* programming language that is memory safe and has **no garbage collector by default**. Its syntax deliberately follows C#, so it reads naturally to anyone who knows C#, while its memory model is built on **ownership** and **borrowing**: a strong architecture with a syntax that is easy to read.
 
 NZ is designed for many kinds of programs: kernels (`no_runtime`), web/app servers, and games.
 
 **Syntax reference.** This guide is a tour. For a construct-by-construct reference (its syntax and a short example), see [Syntax Reference](+/Syntax-Reference.md).
 
-NZ programs **compile to C and run** through `clang` (`nzc run`), after passing the lexer, parser and semantic analysis. **Ownership and borrow checking are active**: owned objects are freed deterministically, and strings are freed with their last holder (see [Ownership](+/Ownership.md) and [Compiler](+/Compiler.md)).
+NZ programs **compile to C and run** through `clang` (`nzc run`), after passing the lexer, parser and semantic analysis. Before Milestone 0.1 the compiler is written in Rust and translates NZ to C; this describes the current implementation. **Ownership and borrow checking are active**: owned objects are freed deterministically, and strings are freed with their last holder (see [Ownership](+/Ownership.md) and [Compiler](+/Compiler.md)).
 
 ## 0.1 Installation and Hello World
 
