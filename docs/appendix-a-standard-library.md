@@ -85,7 +85,7 @@ import std.io.Directory;
 |---|---|---|
 | `CreateDirectory` (static) | `void CreateDirectory(string)` | Makes the folder and every missing folder above it; an existing folder is no error. |
 | `Exists` (static) | `bool Exists(string?)` | Whether the path names an existing folder; `false` for null or an empty path. |
-| `GetFiles` (static) | `string[] GetFiles(string)`<br>`string[] GetFiles(string, string)` | The files in the folder matching `searchPattern` as .NET matches it (`*`, `?`, `*.*` for all; it may start with a sub folder), sorted ordinally. |
+| `GetFiles` (static) | `string[] GetFiles(string)`<br>`string[] GetFiles(string, string)` | The files in the folder matching `searchPattern` (`*`, `?`, `*.*` for all; it may start with a sub folder), sorted ordinally. |
 | `GetDirectories` (static) | `string[] GetDirectories(string)`<br>`string[] GetDirectories(string, string)` | The folders in the folder (matching `searchPattern`), sorted ordinally. |
 | `Delete` (static) | `void Delete(string)`<br>`void Delete(string, bool)` | Deletes the folder: it must be empty unless `recursive` is `true`. |
 | `GetCurrentDirectory` (static) | `string GetCurrentDirectory()` | The current directory, as a full path. |
@@ -132,8 +132,8 @@ import std.collections.Dictionary;
 | `Remove` | `bool Remove(TKey)` | Removes the key and drops its value; `false` when the key is not present. |
 | `Clear` | `void Clear()` | Removes and drops every pair. |
 | `ContainsKey` | `bool ContainsKey(TKey)` | Whether the key is present. |
-| `TryGetValue` | `TValue? TryGetValue(TKey)` | A copy of the key's value, or null when the key is missing (C#'s `out` value is the result); only for values that are copied. |
-| `GetValueOrDefault` | `TValue GetValueOrDefault(TKey)`<br>`TValue GetValueOrDefault(TKey, TValue)` | A copy of the key's value, or `defaultValue`, or the zero value (`0`, `false`, null); only for values that are copied, and the one-argument form not for `string` values (.NET gives null). |
+| `TryGetValue` | `TValue? TryGetValue(TKey)` | A copy of the key's value, or null when the key is missing; only for values that are copied. |
+| `GetValueOrDefault` | `TValue GetValueOrDefault(TKey)`<br>`TValue GetValueOrDefault(TKey, TValue)` | A copy of the key's value, or `defaultValue`, or the zero value (`0`, `false`, null); only for values that are copied, and the one-argument form not for `string` values. |
 | `Keys` | `List<TKey> Keys { get; }` | The keys in insertion order, as a new list of copies (a snapshot: later changes of the dictionary do not reach it). |
 | `Values` | `List<TValue> Values { get; }` | The values in insertion order, as a new list of copies (a snapshot); only for values that are copied. |
 | `Count` | `int Count { get; }` | The number of pairs. |
@@ -182,7 +182,7 @@ import std.collections.Stack;
 | `Push` | `void Push(T)` | Puts the element on top; the stack owns it from then on. |
 | `Pop` | `T Pop()` | Removes the top element and gives it to the caller; an empty stack stops (`InvalidOperationException`: Stack empty.). |
 | `Peek` | `T Peek()` | A copy of the top element (elements that are copied only); an empty stack stops. |
-| `TryPop` | `T? TryPop()` | Removes the top element and gives it to the caller, or null when the stack is empty (C#'s `out` value is the result). |
+| `TryPop` | `T? TryPop()` | Removes the top element and gives it to the caller, or null when the stack is empty. |
 | `TryPeek` | `T? TryPeek()` | A copy of the top element, or null when the stack is empty (elements that are copied only). |
 | `Clear` | `void Clear()` | Removes and drops every element. |
 | `Count` | `int Count { get; }` | The number of elements. |
@@ -201,7 +201,7 @@ import std.collections.Queue;
 | `Enqueue` | `void Enqueue(T)` | Adds the element at the end; the queue owns it from then on. |
 | `Dequeue` | `T Dequeue()` | Removes the first element and gives it to the caller; an empty queue stops (`InvalidOperationException`: Queue empty.). |
 | `Peek` | `T Peek()` | A copy of the first element (elements that are copied only); an empty queue stops. |
-| `TryDequeue` | `T? TryDequeue()` | Removes the first element and gives it to the caller, or null when the queue is empty (C#'s `out` value is the result). |
+| `TryDequeue` | `T? TryDequeue()` | Removes the first element and gives it to the caller, or null when the queue is empty. |
 | `TryPeek` | `T? TryPeek()` | A copy of the first element, or null when the queue is empty (elements that are copied only). |
 | `Clear` | `void Clear()` | Removes and drops every element. |
 | `Count` | `int Count { get; }` | The number of elements. |
@@ -416,9 +416,9 @@ import std.Math;
 | `Cos` (static) | `double Cos(double)` | The cosine of an angle in radians. |
 | `Tan` (static) | `double Tan(double)` | The tangent of an angle in radians. |
 | `Atan2` (static) | `double Atan2(double, double)` | The angle whose tangent is `y / x`. |
-| `PI` (static) | `double PI { get; }` | π (a constant in C#; a read-only value here). |
-| `E` (static) | `double E { get; }` | e (a constant in C#; a read-only value here). |
-| `Tau` (static) | `double Tau { get; }` | 2π (a constant in C#; a read-only value here). |
+| `PI` (static) | `double PI { get; }` | π (a read-only value). |
+| `E` (static) | `double E { get; }` | e (a read-only value). |
+| `Tau` (static) | `double Tau { get; }` | 2π (a read-only value). |
 
 #### `StringComparison`
 

@@ -1,6 +1,6 @@
 # Compiler
 
-The NZ compiler is made of the `nz-compiler` library in the `compiler/` folder, and the `nzc` command in the `nzc/` folder. Both are one Cargo workspace at the repository root.
+The NZ compiler is made of the `nz-compiler` library in the `compiler/` folder, and the `nzc` command in the `nzc/` folder. Both are built together from the repository root.
 
 ## Stages
 
@@ -251,7 +251,7 @@ The code that describes the machine that *runs* the program stays host-dependent
 
 The documents in the `docs/` folder are not written once and then left alone. Two mechanisms keep them correct.
 
-**1. The compiler checks the code blocks.** `cargo test` reads every `.md` in `docs/` and checks each code block that has the `nz` marker:
+**1. The compiler checks the code blocks.** The test suite reads every `.md` in `docs/` and checks each code block that has the `nz` marker:
 
 | Block marker | Meaning |
 |---|---|
@@ -263,7 +263,7 @@ The documents in the `docs/` folder are not written once and then left alone. Tw
 | `nz output="text"` | a whole program that passes `check`, is then **built and run**; `stdout` must be exactly `text` (`\n`, `\t`, `\\`, `\"` are interpreted) and the exit code 0 |
 | `nz fragment output="text"` | a piece wrapped in `Main`, then built and run by the same rules |
 
-The `error` marker must not be used together with `output` or `warning` in one block. An `output` block needs `clang` installed when `cargo test` runs.
+The `error` marker must not be used together with `output` or `warning` in one block. An `output` block needs `clang` installed when the test suite runs.
 
 The block checker reads only one file, so an example made of several files is written as a `text` block and points to `examples/packages/`; that program is tested by `tests/examples.rs`.
 
@@ -272,10 +272,10 @@ So when the behaviour of the compiler changes, a stale example makes the test fa
 **2. The `GEN` sections are written from code.** The keyword list, the operator precedence table, the list of CLI commands, and the standard library reference are taken straight from the tables inside the compiler. To update them, from the repository root:
 
 ```bash
-cargo run -p nzc -- docs docs
+nzc docs docs
 ```
 
-`cargo test` also checks that the `GEN` sections are up to date. If they are not, the test fails and asks you to run the command above.
+The test suite also checks that the `GEN` sections are up to date. If they are not, the test fails and asks you to run the command above.
 
 The generators available:
 

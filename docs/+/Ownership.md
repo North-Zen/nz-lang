@@ -1,6 +1,6 @@
 # Ownership and Borrowing
 
-This page describes what the compiler enforces today. Every block below is checked by `cargo test`; blocks with an `output` are built and run.
+This page describes what the compiler enforces today. Every block below is checked by the test suite; blocks with an `output` are built and run.
 
 ## One owner
 
@@ -599,7 +599,7 @@ void Main(string[] args) {
 }
 ```
 
-Nothing a program can do today observes the order inside one drop: there are no destructors yet, and `Diag.LiveObjects()` and the `NZ_ALLOC_REPORT=1` report are read between statements. The order is fixed now because it becomes the order in which destructors run once they exist. The rule is NZ's own; it is the parent-before-members order of Rust and C++. Each field's value is read before its object is freed, so no drop reads freed memory, and nothing is freed while a borrow of it lives (the borrow rules above). The fields declared after a chain's link drop only once the rest of the chain has, so they wait while the drop runs; in a long chain the runtime keeps each object's waiting fields in one record, for a class object as large as the object and allocated as it is freed (the allocator can give back that block), for the struct payload of a `Shared<T>` or `Arc<T>` only as large as the waiting fields, so dropping a chain of one class takes about the memory the chain held (see README, "Dropping a deep structure needs only a bounded stack").
+Nothing a program can do today observes the order inside one drop: there are no destructors yet, and `Diag.LiveObjects()` and the `NZ_ALLOC_REPORT=1` report are read between statements. The order is fixed now because it becomes the order in which destructors run once they exist. The rule is NZ's own; it is the parent-before-members order. Each field's value is read before its object is freed, so no drop reads freed memory, and nothing is freed while a borrow of it lives (the borrow rules above). The fields declared after a chain's link drop only once the rest of the chain has, so they wait while the drop runs; in a long chain the runtime keeps each object's waiting fields in one record, for a class object as large as the object and allocated as it is freed (the allocator can give back that block), for the struct payload of a `Shared<T>` or `Arc<T>` only as large as the waiting fields, so dropping a chain of one class takes about the memory the chain held (see README, "Dropping a deep structure needs only a bounded stack").
 
 ## `?` leaves the function like `return`
 
@@ -772,7 +772,7 @@ Any call may replace a static, and the analysis sees one function at a time. So 
 
 **Calling an `unsafe` function needs `unsafe`**: a call of an `unsafe` function or method, or of any method of an `unsafe` type, and `new T()` when a field initializer of an `unsafe` type is not a constant expression (a call, a `new`, a write or a read of a static), are written inside `unsafe`. The rule is lexical: it is checked where the call is written and does not spread to callers.
 
-**The `unsafe` block is the vouch point.** The callee of the call that lends the static is not checked across functions. When that callee assigns the static from `unsafe` code, whether it is an `unsafe` function or method receiving the static by `in`, `ref` or as its receiver (or a field inside it by `ref`), or a safe function that does the write inside an `unsafe { }` block, the caller reads freed memory. A safe function containing such a block is as dangerous to the caller that lends it the static as an `unsafe` function is. As in Rust, the vouch sits with the `unsafe` block wherever it appears: the programmer who writes it vouches that nothing lent is freed by it, as with `static mut`.
+**The `unsafe` block is the vouch point.** The callee of the call that lends the static is not checked across functions. When that callee assigns the static from `unsafe` code, whether it is an `unsafe` function or method receiving the static by `in`, `ref` or as its receiver (or a field inside it by `ref`), or a safe function that does the write inside an `unsafe { }` block, the caller reads freed memory. A safe function containing such a block is as dangerous to the caller that lends it the static as an `unsafe` function is. The vouch sits with the `unsafe` block wherever it appears: the programmer who writes it vouches that nothing lent is freed by it.
 
 ## Shared objects
 
@@ -1089,7 +1089,7 @@ Why managed values stay sound:
 - **A pointer cannot leave `unsafe`.** A pointer type can be written, and a pointer value can exist, only in an unsafe context, so a pointer cannot flow into safe code by assignment, return, field, capture, type argument, tuple or optional. The only way out is a cast to `nint` or `nuint`; turning that number back into a pointer needs `unsafe` again.
 - **Pointers are copied and never moved.** For the checker a pointer is a `Copy` value with no drop glue; no loan is recorded for `&x`, whose target is unmanaged. A struct with pointer fields is `Copy` when its other fields are; a class with pointer fields stays an owner, and its drop frees the object, never what the pointers point at.
 
-What `unsafe` vouches for, as in Rust: a pointer to a local that has gone out of scope (`return &x;` from an `unsafe` function is accepted), a write past the end of a buffer, a misaligned read through a pointer cast, a write through a pointer into an object lent by `in`, a double `Free`. The compiler does not see these; the sanitizers find them in tests. A pointer write can also corrupt memory next to its target, including a managed object's fields: that is undefined behaviour, which the program that writes `unsafe` takes on.
+What `unsafe` vouches for: a pointer to a local that has gone out of scope (`return &x;` from an `unsafe` function is accepted), a write past the end of a buffer, a misaligned read through a pointer cast, a write through a pointer into an object lent by `in`, a double `Free`. The compiler does not see these; the sanitizers find them in tests. A pointer write can also corrupt memory next to its target, including a managed object's fields: that is undefined behaviour, which the program that writes `unsafe` takes on.
 
 A static cannot be a `fixed` root yet, because a static starts with a constant and owns no array or object to pin. When statics with computed initializers arrive, `fixed` over one must follow the rule of [Statics](#statics): any call may replace a static, so a call that may run NZ code ends the freeze.
 

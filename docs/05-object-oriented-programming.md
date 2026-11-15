@@ -766,7 +766,7 @@ void Main(string[] args) {
 }
 ```
 
-**What `unsafe` vouches for.** The analysis checks one function at a time. A function that receives a lent static (`Count(head)` with `int Count(in Node? n)`) cannot free it from safe code: a write to the static, or a call of a function that may write one, needs `unsafe` (see above). Inside `unsafe` code the programmer vouches for these, as for Rust's `static mut`:
+**What `unsafe` vouches for.** The analysis checks one function at a time. A function that receives a lent static (`Count(head)` with `int Count(in Node? n)`) cannot free it from safe code: a write to the static, or a call of a function that may write one, needs `unsafe` (see above). Inside `unsafe` code the programmer vouches for these:
 
 - an `unsafe` function or method that receives a static by `in` or `ref`, or as its receiver (`head?.M()`), and calls something that assigns that static;
 - an `unsafe` method of an object an owned static holds that frees the static (`ee?.M()` where `M` sets `ee = null`);

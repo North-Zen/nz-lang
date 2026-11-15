@@ -7,7 +7,7 @@
 A **package** is a folder. All the `.nz` files directly inside one folder are the files of one package; a subfolder is another package. A program is the package of the folder you give to `nzc`, plus every package it imports.
 
 ```bash
-cargo run -p nzc -- run examples/packages/app
+nzc run examples/packages/app
 ```
 
 The program in `examples/packages/` has two packages:

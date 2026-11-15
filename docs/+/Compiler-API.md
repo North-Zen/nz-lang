@@ -39,7 +39,7 @@ Names are snake_case. Methods marked "(path)" take a file path. A relative path 
 | `run_on_compiler_stack(work)` | Runs work on the compiler's large stack | for clients walking deeply nested code |
 | `keywords()`, `builtin_type_names()`, `is_identifier(text)` | The words of the language | usable keywords (no reserved words), built-in type names, whether a text may be a declared name |
 
-Every public enum may gain variants (in Rust it is `#[non_exhaustive]`), so a client always handles the rest. Structs that only the compiler builds may gain fields.
+Every public enum may gain variants (a client must not assume the list is closed), so a client always handles the rest. Structs that only the compiler builds may gain fields.
 
 ## Rules a client can count on
 

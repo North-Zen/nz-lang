@@ -2,7 +2,7 @@
 
 > NZ is still in development and is not stable. Anything in this documentation can change.
 
-**NZ** is a *systems* programming language that is memory safe and has **no garbage collector by default**. Its syntax is familiar to anyone who has written a C-family language, while its model takes the ideas of **ownership** and **borrowing** from Rust: a strong architecture, but with a syntax that is easier to read.
+**NZ** is a *systems* programming language that is memory safe and has **no garbage collector by default**. Its syntax is familiar to anyone who has written a C-family language, while its model takes the ideas of **ownership** and **borrowing**: a strong architecture, but with a syntax that is easier to read.
 
 NZ is designed for many kinds of programs: kernels (`no_runtime`), web/app servers, and games.
 
@@ -14,7 +14,7 @@ NZ programs **compile to C and run** through `clang` (`nzc run`), after passing 
 
 **Requirements:**
 
-- **Rust toolchain**: [https://rustup.rs](https://rustup.rs)
+- **The compiler**: `nzc` is built from the project's repository (not public yet).
 - **Git**
 - **clang**: the C compiler that `nzc` uses to build programs (set `NZ_CC` to use another one).
 - **Code editor**: any; the `.nz` extension has no dedicated editor support yet.
@@ -22,12 +22,12 @@ NZ programs **compile to C and run** through `clang` (`nzc run`), after passing 
 **Running NZ code with `nzc run`:**
 
 1. Get the code and enter its folder.
-2. Run `cargo run -p nzc -- run <file.nz|folder>`. The compiler checks the program (every error is printed at once with its line and column), translates it to C, builds it with `clang`, and runs it.
+2. Run `nzc run <file.nz|folder>`. The compiler checks the program (every error is printed at once with its line and column), translates it to C, builds it with `clang`, and runs it.
 3. `nzc check <file.nz|folder>` only checks and prints `ok`; `nzc build <file.nz|folder>` leaves an executable (for a folder, in its `bin` folder). A folder is a package (see [20.1](20-module-system-and-visibility.md#201-packages)).
 
 ```bash
 # in the compiler repository (its source is not public yet)
-cargo run -p nzc -- run examples/hello.nz
+nzc run examples/hello.nz
 ```
 
 The program in `examples/hello.nz` prints its greeting and exits with code 0:

@@ -407,7 +407,7 @@ A `switch` that forgets a case gets a warning. A `Result` is an ordinary value: 
 
 ### Passing an error on with `?`
 
-Writing `?` after an expression means: if this is an error, leave the function with that error now. On a `Result<T, E>`, `?` gives the `Ok` value, or makes the enclosing function return the `Err`. On a `T?`, `?` gives the value, or makes the function return `null`. NZ takes this operator from Rust.
+Writing `?` after an expression means: if this is an error, leave the function with that error now. On a `Result<T, E>`, `?` gives the `Ok` value, or makes the enclosing function return the `Err`. On a `T?`, `?` gives the value, or makes the function return `null`.
 
 ```nz output="digits 1234\nbad character at 2 in 12x4\n"
 package main;
