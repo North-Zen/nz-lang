@@ -557,7 +557,7 @@ void Main(string[] args) {
 }
 ```
 
-Assigning a new object to `keep` frees the old one immediately. `return`, `break` and `continue` drop every live local they leave, in the same order. `using (...)` makes its value visible in the block and frees it when the block ends; it has no other cleanup action.
+Assigning a new object to `keep` frees the old one immediately. `return`, `break` and `continue` drop every live local they leave, in the same order. `using (...)` (and `using var`) makes its value visible in the block and drops it when the block ends; a value whose type implements `IDisposable` runs its `Dispose` there, as at every other drop (see [`IDisposable`](#idisposable-cleanup-follows-ownership)).
 
 A value made on the spot that a pattern variable tests (`if (Make() is Node n) { ... }`) lives until the end of the statement that holds the pattern: for an `if`, the whole `if`, both branches included; for a loop condition, the loop (each new value replaces the one before); for a declaration or an expression statement, that statement. Every way out of the statement (its end, `return`, `break`, `continue`) frees it once. The same holds for the value a `switch` tests.
 
@@ -599,7 +599,7 @@ void Main(string[] args) {
 }
 ```
 
-Nothing a program can do today observes the order inside one drop: there are no destructors yet, and `Diag.LiveObjects()` and the `NZ_ALLOC_REPORT=1` report are read between statements. The order is fixed now because it becomes the order in which destructors run once they exist. The rule is NZ's own; it is the parent-before-members order. Each field's value is read before its object is freed, so no drop reads freed memory, and nothing is freed while a borrow of it lives (the borrow rules above). The fields declared after a chain's link drop only once the rest of the chain has, so they wait while the drop runs; in a long chain the runtime keeps each object's waiting fields in one record, for a class object as large as the object and allocated as it is freed (the allocator can give back that block), for the struct payload of a `Shared<T>` or `Arc<T>` only as large as the waiting fields, so dropping a chain of one class takes about the memory the chain held (see README, "Dropping a deep structure needs only a bounded stack").
+`IDisposable.Dispose` observes this order: an object's `Dispose` runs first, while its fields are still there, then its fields are dropped in declaration order, each completely (its own `Dispose` included) before the next; `Diag.LiveObjects()` and the `NZ_ALLOC_REPORT=1` report are read between statements. The rule is NZ's own; it is the parent-before-members order. Each field's value is read before its object is freed, so no drop reads freed memory, and nothing is freed while a borrow of it lives (the borrow rules above). The fields declared after a chain's link drop only once the rest of the chain has, so they wait while the drop runs; in a long chain the runtime keeps each object's waiting fields in one record, for a class object as large as the object and allocated as it is freed (the allocator can give back that block), for the struct payload of a `Shared<T>` or `Arc<T>` only as large as the waiting fields, so dropping a chain of one class takes about the memory the chain held (see README, "Dropping a deep structure needs only a bounded stack").
 
 ## `?` leaves the function like `return`
 
@@ -761,6 +761,50 @@ void Main(string[] args) {
 **Generic struct instances.** A generic struct, tuple or union instance takes its kind from its type arguments: `Box<int>` is copied, `Box<C>` (with `C` a class) is owned and moves, `Box<string>` is counted. A struct that nests generic structs inside one another is classified per instance, and each distinct instance is counted once however many fields repeat it: `W<W<W<int>>>` with three fields of `T` in `W` is three instances, copied freely, also inside a tuple of several copies of itself. Past the limits the compiler stops and treats the struct as owned, the stricter kind: more than 64 structs held inside one another by value, more than 100,000 distinct struct instances inside one type, or type arguments nested more than 16 levels or with more than 512 parts (a generic that uses itself with ever larger types, which `nzc build` refuses as `generic instantiation too deep`).
 
 **Size of a value held in place.** A struct, tuple or union lives where it is held: a local or a parameter on the stack, a field inside its object, and a value made by `new` on the stack first, before it is stored anywhere. A value larger than 1 MiB (1,048,576 bytes, counting each part's size without padding; a class, list, array, string or handle counts as its reference) is refused (NZ1700) wherever it is declared or made: a local (also a `foreach`, deconstruction or pattern variable), a parameter or return type (also of a local function), a field or property, and `new` of such a type, because making or copying it would overflow the stack. Keep its large parts in classes or behind `Shared<T>` handles instead; a `List<T>` of such values cannot be filled either, since each element is made on the stack before `Add` copies it. A type whose size the compiler cannot finish counting (one that names ever new instances of a generic type held by value) is refused the same way. `W<W<...<int>...>>` with three fields of `T` in `W` is under the limit 11 levels deep and over it 12 levels deep. Not checked: a value made by other expressions (a tuple literal, a call) that is never stored, and instances made only inside generic bodies.
+
+## Interface values
+
+An interface value owns its object, exactly as a class variable does: converting a class value to an interface moves it (a fresh object is simply owned by the interface value), assigning or passing an interface value without a modifier moves it, and dropping it drops the object through the object's own drop code, whatever its class. Converting to an inherited interface moves too. An `in` argument converted to an interface borrows: the callee sees the object and the caller keeps it.
+
+A call through an interface cannot see which method runs, so the receiver rule reads the interface's marker: a `readonly` member borrows the receiver for reading, any other member borrows it for writing (so, as for a class method that changes the object, it cannot be called through an `in` parameter). A class implementing a `readonly` member must not change the object in it, and a `readonly` default member calls only `readonly` members. A call on a value of a type parameter follows the marker of the member its constraint gives. A struct is never held in an interface value; through a constraint its methods are called directly, with the struct's own receiver rule.
+
+```nz error="`Bump` on `c`, which it changes"
+package main;
+
+interface ICounter {
+    readonly int Peek();
+    void Bump();
+}
+
+void Show(in ICounter c) {
+    c.Bump();
+}
+
+void Main(string[] args) { }
+```
+
+## `IDisposable`: cleanup follows ownership
+
+`Dispose` of a type implementing `IDisposable` runs exactly once, at the drop of the value, wherever ownership puts it: the end of the owner's scope by any exit (`return`, `break`, `continue`, `?`, the end of a `switch` section, a `using` block), a replacement (`x = other;` disposes the old value at once), the drop of an object, list, dictionary or handle that holds it, or the end of the callee that took it by value. Moving a value moves its cleanup; a conditionally moved variable is disposed only on the paths where it still holds the value. `defer`s and drops (with their `Dispose`) run in one reverse registration order. `Abort` stops the program without running `Dispose`. A struct that implements `IDisposable` is an owned type: it moves instead of being copied. `x.Dispose()` written in a program is refused, since the automatic call at the drop would run it again (also through a constraint `where T : IDisposable`, through `Shared<T>` and `Arc<T>`, and inside the type); the `Dispose` that implements `IDisposable` cannot also implement another interface's `Dispose`.
+
+A replaced or removed value is taken out of its place before it is dropped: an assignment saves the old value, stores the new one, then drops the saved one; `Clear`, `RemoveAt` and `Remove` of a list or dictionary take what they remove out first and drop it with the statement's temporaries, after the call's lends end. So a `Dispose` that reaches the same place again (through a `Shared` or weak back edge, a static) sees the new value, and nothing is dropped twice. At normal exit the statics are dropped in rounds until none holds a value, since a `Dispose` may fill one again. What a `Dispose` releases (a field set to `null` or replaced, a local leaving its scope, `Clear`) is never dropped inside it: a value that has a `Dispose` of its own, a class object or a struct, waits until that `Dispose` returns and the object that ran it has been dropped, then the waiting values are dropped in the order they were released, each completely before the next. This also holds for such a value reached inside what was released (a plain object, a struct field, a list, dictionary, array, optional, union or `Shared` payload). It is the same at every depth, so a chain released link by link (`Next = null;` in `Dispose`) needs a bounded stack however long it is and whatever its links go through. Anything else it releases is dropped at once: a `Shared` handle held directly or in a value without a `Dispose` (a list, dictionary, array, plain object, struct) counts down when it is released, so a `WeakReference` sees the object gone in the next statement; a handle inside a value that has a `Dispose` counts down when that value is dropped.
+
+```nz output="close g\ndeferred\nclose f\n"
+package main;
+
+import std.io.Console;
+
+class Log : IDisposable {
+    string Name = "";
+    void Dispose() { Console.WriteLine($"close {Name}"); }
+}
+
+void Main(string[] args) {
+    var f = new Log { Name = "f" };
+    defer Console.WriteLine("deferred");
+    var g = new Log { Name = "g" };
+}
+```
 
 ## Statics
 

@@ -654,7 +654,7 @@ void Main(string[] args) {
 | `string` | the empty string `""` |
 | a class or struct `C` | an error: write `new C()` or use `C?` |
 | an enum | an error: name one of its variants or use `E?` |
-| a type parameter `T` | an error: `default(T)` needs a constraint, which is not supported yet |
+| a type parameter `T` | an error: `default(T)` is not available, since `T` may be a class, which has no default value; use `T?` and `null` |
 
 In a constant, `nameof` can name only constants, and a bare `default` takes the constant's type. A bare `default` anywhere else (`var x = default;`, `1 + default`) needs a type: write `default(int)`.
 

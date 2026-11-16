@@ -1311,7 +1311,7 @@ void Main(string[] args) {
 
 ## 5.12 `using`
 
-`using (var x = e) { ... }` owns `x` for the block and drops it at the end. Calling `Dispose` of an `IDisposable` at that point comes with interfaces.
+`using (var x = e) { ... }` owns `x` for the block and drops it at the end; a value whose type implements `IDisposable` runs its `Dispose` there, as at every drop (see [Syntax-Declarations 17.7](Syntax-Declarations.md#177-idisposable-and-dispose)).
 
 ```nz output="in 1\nend\n"
 package main;
@@ -1328,6 +1328,7 @@ void Main(string[] args) {
 }
 ```
 
+- The forms `using (T x = e)`, `using (e)`, several declarators in one statement, and the declaration `using var x = e;` all work. A value whose type implements `IDisposable` runs its `Dispose` once, when it is dropped; a value of any other type is accepted and simply dropped.
 - The block owns the value, so `using (x) { }` with an existing local moves `x` into the block.
 
 ## 5.14 `fixed`

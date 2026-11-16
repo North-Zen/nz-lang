@@ -94,23 +94,128 @@ Structs have their own chapter: [4. Struct](04-struct.md#4-struct).
 
 ## 1.4.5 Interface
 
+An **interface** lists methods that a class or struct promises to have. A type names its interfaces after a colon (`class Dog : IPet`), and an interface may inherit other interfaces (`interface IPet : IAnimal`). Interface members are public methods, so their names start with an uppercase letter; the implementing method has the same name, parameters (with their `in`/`ref` modes) and return type, and is a public instance method. A member may have a body: a **default member**, used by every type that does not declare the member itself. An interface holds methods only: no fields, properties, operators, static members or generic methods.
+
+A class converts to any interface it implements, directly or through inherited interfaces, and the **interface value** owns the object as the class variable did: the conversion moves it, and dropping the interface value drops the object. A call through an interface value runs the method of the object's class (dynamic dispatch). Interface values go wherever class values go: locals, parameters, fields, `I?`, lists, arrays and dictionary values. To share an interface value, share a class that holds it.
+
+```nz output="I say woof\na cat\nRex says woof\nI say woof\nI say woof\n"
+package main;
+
+import std.io.Console;
+import std.collections.List;
+
+interface IAnimal {
+    readonly string Speak();
+    readonly string Describe() {
+        return $"I say {Speak()}";
+    }
+}
+
+interface IPet : IAnimal {
+    readonly string Name();
+}
+
+class Dog : IPet {
+    string Speak() { return "woof"; }
+    string Name() { return "Rex"; }
+}
+
+class Cat : IAnimal {
+    string Speak() { return "meow"; }
+    string Describe() { return "a cat"; }
+}
+
+void Main(string[] args) {
+    var zoo = new List<IAnimal>();
+    zoo.Add(new Dog());
+    zoo.Add(new Cat());
+    foreach (var a in zoo) {
+        Console.WriteLine(a.Describe());
+    }
+    IPet pet = new Dog();
+    Console.WriteLine($"{pet.Name()} says {pet.Speak()}");
+    IAnimal animal = pet;
+    Console.WriteLine(animal.Describe());
+    var d = new Dog();
+    Console.WriteLine(d.Describe());
+}
+```
+
+**`readonly` members.** A call through an interface cannot see which method runs, so the interface says whether a member changes the object: a member written `readonly` promises not to, and only `readonly` members can be called through an `in` interface parameter (or a `readonly` default member). An implementing method of a `readonly` member must not change the object (it reads fields, and calls only `readonly` members or methods that change nothing). The marker is NZ's own: it is what lets the compiler check borrows through an interface.
+
+```nz error="cannot call `Bump` on `c`, which it changes: `c` is an `in` parameter"
+package main;
+
+interface ICounter {
+    readonly int Peek();
+    void Bump();
+}
+
+class Counter : ICounter {
+    int n;
+    int Peek() { return n; }
+    void Bump() { n++; }
+}
+
+void Show(in ICounter c) {
+    c.Bump();
+}
+
+void Main(string[] args) { }
+```
+
+**Structs** implement interfaces too, but a struct is never held in an interface-typed variable (that would need boxing): it reaches an interface's members through a generic constraint, which calls the struct's method directly (see [8.5 Constraints](08-generics.md#85-constraints)). Comparing two interface values with `==` or `!=` is refused (there is no reference identity); `x == null` on an `I?` works.
+
+```nz error="a struct cannot be held in an interface-typed variable"
+package main;
+
+interface IShape {
+    readonly int Area();
+}
+
+struct Square : IShape {
+    int Side;
+    int Area() { return Side * Side; }
+}
+
+void Main(string[] args) {
+    IShape s = new Square();
+}
+```
+
+```nz error="cannot compare interface values with `==`"
+package main;
+
+interface IShape {
+    readonly int Area();
+}
+
+class Square : IShape {
+    int Area() { return 4; }
+}
+
+void Main(string[] args) {
+    IShape a = new Square();
+    IShape b = new Square();
+    var same = a == b;
+}
+```
+
+A missing member, a member with another signature, a static or non-public implementing method, a cycle of interfaces and listing an interface twice are errors; when a type inherits two different default members for one name (a diamond), it must declare the member itself. A struct must declare every default member that code given that struct can reach: a struct can be the argument of a bound that has default members as long as that code reaches none of them. For a generic function this is what its body calls; for a generic type it is every method of the type, whether the program calls that method or not.
+
+## 1.4.6 Enum
+
+**Enums** are a named set of integer constants:
+
 ```nz
 package main;
 
 enum Color { Red, Green, Blue }
 
-interface IAnimal {
-    void Sound();
-}
-
 void Main(string[] args) {
     var c = Color.Red;
 }
 ```
-
-> Note: an `interface` can only be declared so far; the syntax for implementing it (`class A : IAnimal`) does not exist yet.
-
-## 1.4.6 Enum
 
 **Enums with an underlying type and values.** An enum is stored as an integer, `int` unless written otherwise: `enum Level : byte { ... }` accepts any of `sbyte`, `byte`, `short`, `ushort`, `int`, `uint`, `long` and `ulong` (not `nint`, `nuint`, `char` or `bool`). A member without a value is the previous one plus one, starting at 0. A value is a constant expression of integers that fits the underlying type. It may name any member of the same enum, before or after it (only a cycle is an error, and the message names the members), and a member of another enum only through a cast, as `(int)Level.High`. Two members may share a value. An enum is copied, never moved. An enum value prints as its member name (the first member with that value), or as the number when no member has it.
 

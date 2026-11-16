@@ -351,7 +351,7 @@ A value that converts to two cases is refused.
 
 ### 3.7 `interface`
 
-An interface declares members that a type promises to have. Today an interface can be declared, but no type can implement it yet (section 8).
+An interface declares members that a type promises to have; classes and structs implement it (section 8).
 
 ```nz
 package main;
@@ -1035,13 +1035,90 @@ void Main(string[] args) {
 
 Generic code is compiled once per type argument. `F<int>` without a call is an error.
 
+### 7.2 Constraints: `where`
+
+`where T : IComparable<T>`, `where T : class`, `where T : struct`, `where T : new()` limit what a type argument can be, and let generic code call the members the constraint promises.
+
+A type argument is checked against the constraints at every call, `new` and written type, also when it is itself a type parameter (its own constraints must imply them). The library interface `IComparable<T>` is implemented by the integer types, `char` and `string`.
+
+```nz output="7 pear\n"
+package main;
+
+import std.io.Console;
+
+T Max<T>(T a, T b) where T : IComparable<T> {
+    return a.CompareTo(b) >= 0 ? a : b;
+}
+
+void Main(string[] args) {
+    Console.WriteLine($"{Max(3, 7)} {Max("pear", "apple")}");
+}
+```
+
+Generic code is compiled once per type argument, so a call through a constraint on a class or struct is direct. `default(T)` is an error, since `T` may be a class, which has no default value. A struct given for a constraint must declare every interface member the generic code reaches; it does not take a default member of the interface. For a generic type, every method of the type counts, whether the program calls it or not.
+
 ---
 
 ## 8. Interfaces
 
 ### 8.1 Declaring an interface
 
-Members of an interface are methods without bodies (and property signatures). An interface may be generic. See the example in 3.7.
+Members of an interface are public instance methods, with or without a body (a default member). An interface may be generic. See the example in 3.7.
+
+### 8.2 Implementing an interface
+
+```nz output="9\n"
+package main;
+
+import std.io.Console;
+
+interface IShape {
+    readonly int Area();
+}
+
+class Square : IShape {
+    public int Side = 3;
+    public int Area() => Side * Side;
+}
+
+void Main(string[] args) {
+    IShape s = new Square();
+    Console.WriteLine(s.Area());
+}
+```
+
+An interface value owns its object (converting a class moves it in), and a borrowed interface value (`in IShape`) lends it. A struct reaches interface members through generic constraints only, never in an interface value. `==` on interface values is refused.
+
+### 8.3 Default interface members
+
+`string Describe() => Speak();` inside an interface gives a body that implementing types inherit.
+
+```nz output="shape\n"
+package main;
+
+import std.io.Console;
+
+interface IShape {
+    readonly string Name() => "shape";
+}
+
+class Dot : IShape { }
+
+void Main(string[] args) {
+    IShape d = new Dot();
+    Console.WriteLine(d.Name());
+}
+```
+
+Two different defaults inherited for one member must be resolved by declaring the member in the type.
+
+### 8.4 Interface inheritance
+
+`interface IB : IA { ... }`. A type that implements `IB` also implements `IA`. Redeclaring an inherited member in the derived interface is refused.
+
+### 8.5 `readonly` interface members (NZ only)
+
+`readonly int Size();` in an interface: only `readonly` members can be called through an `in` interface value, and an implementation must not change the object. NZ needs the marker to know which calls a read-only borrow allows.
 
 ---
 
@@ -1436,7 +1513,31 @@ void Main(string[] args) {
 }
 ```
 
-`defer` is NZ only. `using (x) { }` on an existing variable is not available yet.
+`defer` is NZ only. `using` has all its forms: `using (var x = e)`, `using (T x = e)`, `using (e)`, several declarators, and the `using var x = e;` declaration. It also accepts a value that is not `IDisposable` (it then only drops it). The block owns its value, so `using (x) { }` with an existing local moves `x` into the block, and `x` cannot be used after it.
+
+### 17.7 `IDisposable` and `Dispose`
+
+A class or struct that implements `IDisposable` has its `Dispose()` called **every time a value of it is dropped**, before its fields are dropped, so cleanup runs at a known point without a `using`.
+
+```nz output="use\nclose\nafter\n"
+package main;
+
+import std.io.Console;
+
+class File : IDisposable {
+    public void Dispose() { Console.WriteLine("close"); }
+}
+
+void Main(string[] args) {
+    {
+        var f = new File();
+        Console.WriteLine("use");
+    }
+    Console.WriteLine("after");
+}
+```
+
+What a `Dispose` releases is never dropped inside it: a value with a `Dispose` of its own is dropped after that `Dispose` returns and its object has been dropped, in the order released (see [Ownership](Ownership.md#idisposable-cleanup-follows-ownership)). This holds for a struct with a `Dispose` as for a class object; dropped anywhere else, a value runs its `Dispose` where it is dropped.
 
 ---
 
@@ -1485,7 +1586,12 @@ void Main(string[] args) {
 | Default values, named arguments | [6.5](#65-default-values-and-named-arguments) |
 | Extension methods | [6.8](#68-extension-methods) |
 | Type parameters, generic methods, inference | [7.1](#71-type-parameters-generic-methods-and-inference) |
+| Constraints `where` | [7.2](#72-constraints-where) |
 | Interface declaration | [8.1](#81-declaring-an-interface) |
+| Implementing an interface | [8.2](#82-implementing-an-interface) |
+| Default interface members | [8.3](#83-default-interface-members) |
+| Interface inheritance | [8.4](#84-interface-inheritance) |
+| `readonly` interface members | [8.5](#85-readonly-interface-members-nz-only) |
 | Local functions | [10.1](#101-local-functions) |
 | Attribute syntax | [11.1](#111-attribute-syntax) |
 | `[Test]` | [11.2](#112-test) |
@@ -1508,6 +1614,7 @@ void Main(string[] args) {
 | Drop order | [17.5](#175-drop-order) |
 | `defer` | [17.6](#176-defer-and-using) |
 | `using` | [17.6](#176-defer-and-using) |
+| `IDisposable`, `Dispose` | [17.7](#177-idisposable-and-dispose) |
 
 ## Not available yet
 
@@ -1533,15 +1640,14 @@ These constructs are not available in NZ:
 - `ref readonly` and `scoped` parameters
 - `ref` returns and `ref` locals
 - Extension blocks
-- Constraints: `where`
 - Variance: `in` and `out` on type parameters
 - Static members of generic types
 - Generic local functions
-- Implementing an interface
-- Default interface members
-- Interface inheritance
-- `readonly` interface members
 - Explicit interface implementation
+- Properties, indexers, operators and generic methods in an interface
+- A default interface member taken by a struct
+- `Shared<I>` and `Arc<I>` of an interface `I`
+- Calling `Dispose()` directly
 - Static and static abstract interface members
 - Base classes
 - `virtual`, `override`, `abstract`, `sealed`, `new`
@@ -1570,7 +1676,6 @@ These constructs are not available in NZ:
 - Reading attributes
 - `dynamic`
 - `volatile`
-- `IDisposable` and `Dispose`
 
 The compiler refuses them:
 
@@ -1668,18 +1773,6 @@ class Box<T> {
 void Main(string[] args) { }
 ```
 
-**Default interface members**
-
-```nz error="default interface members are not supported yet"
-package main;
-
-interface IShape {
-    string Name() => "shape";
-}
-
-void Main(string[] args) { }
-```
-
 **`object`**
 
 ```nz error="unknown type `object`"
@@ -1765,7 +1858,7 @@ void Main(string[] args) {
 NZ does not support these constructs:
 
 - `namespace` and `using` directives: `package` and `import` replace them (1.8).
-- Finalizers `~C()`: `IDisposable` runs at every drop (4.16).
+- Finalizers `~C()`: `IDisposable` runs at every drop (17.7).
 - Query expressions (`from x in xs select x`): loops and methods cover the use.
 - Anonymous types (`new { X = 1 }`): tuples cover the use.
 - Boxing values into `object`: there is no common root type, and `object` is not available.
