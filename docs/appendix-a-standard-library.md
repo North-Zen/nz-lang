@@ -66,12 +66,12 @@ import std.io.Path;
 | `GetExtension` (static) | `string? GetExtension(string?)` | The last `.` of the file name and what follows (empty when there is none or nothing follows). |
 | `GetDirectoryName` (static) | `string? GetDirectoryName(string?)` | The part before the last separator; null for null, an empty path or a root. |
 | `ChangeExtension` (static) | `string? ChangeExtension(string?, string?)` | The path with its extension replaced (removed for a null `extension`). |
-| `IsPathRooted` (static) | `bool IsPathRooted(string?)` | Whether the path starts at a root (a separator, or a drive on Windows). |
+| `IsPathRooted` (static) | `bool IsPathRooted(string?)` | Whether the path starts at a root (a separator). |
 | `GetFullPath` (static) | `string GetFullPath(string)` | The path made absolute against the current directory, `.` and `..` removed. |
-| `DirectorySeparatorChar` (static) | `char DirectorySeparatorChar { get; }` | `/`, or `\` on Windows. |
+| `DirectorySeparatorChar` (static) | `char DirectorySeparatorChar { get; }` | `/`. |
 | `AltDirectorySeparatorChar` (static) | `char AltDirectorySeparatorChar { get; }` | `/` on every OS. |
-| `PathSeparator` (static) | `char PathSeparator { get; }` | The separator in path lists such as `PATH`: `:`, or `;` on Windows. |
-| `VolumeSeparatorChar` (static) | `char VolumeSeparatorChar { get; }` | `/`, or `:` on Windows. |
+| `PathSeparator` (static) | `char PathSeparator { get; }` | The separator in path lists such as `PATH`: `:`. |
+| `VolumeSeparatorChar` (static) | `char VolumeSeparatorChar { get; }` | `/`. |
 
 #### `Directory`
 
@@ -384,7 +384,7 @@ import std.Environment;
 | `GetCommandLineArgs` (static) | `string[] GetCommandLineArgs()` | The program's path, then its arguments, as a new array. |
 | `Exit` (static) | `void Exit(int)` | Ends the process with the status at once, as `Abort` does: no drops, no `defer`. |
 | `ExitCode` (static) | `int ExitCode { get; set; }` | The status a normal return from `void Main` exits with; `int Main`'s result wins. |
-| `NewLine` (static) | `string NewLine { get; }` | `\r\n` on Windows, `\n` elsewhere. |
+| `NewLine` (static) | `string NewLine { get; }` | `\n`. |
 | `GetEnvironmentVariable` (static) | `string? GetEnvironmentVariable(string)` | The variable's value, or `null` when it is not set. |
 
 #### `Math`

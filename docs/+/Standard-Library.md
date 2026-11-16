@@ -161,9 +161,9 @@ void Main(string[] args) {
 
 `Encoding.UTF8` is the only encoding. `File.ReadAllText` and `ReadAllLines` skip a UTF-8 byte order mark and stop for a UTF-16 or UTF-32 one; `WriteAllText` writes UTF-8 without a byte order mark. `BitConverter` reads and writes little-endian, which every NZ target is (`BitConverter.IsLittleEndian` is `true`); use `BinaryPrimitives.ReverseEndianness` for big-endian fields.
 
-Deleting never follows links: `Directory.Delete(path, true)` removes a link it meets, inside the tree or as `path` itself, and never what the link points to. On Linux and macOS this holds even when another program swaps folders and links while the delete runs: the tree is removed through open folder handles. On Windows the delete goes by path: a folder swapped for a junction between the listing and the step into it would be followed (see the Windows list below).
+Deleting never follows links: `Directory.Delete(path, true)` removes a link it meets, inside the tree or as `path` itself, and never what the link points to. This holds even when another program swaps folders and links while the delete runs: the tree is removed through open folder handles.
 
-A recursive delete keeps one open folder handle per level of the tree on Linux and macOS, so a tree deeper than the process's open-file limit (often 1024) stops with `IOException: Too many open files`.
+A recursive delete keeps one open folder handle per level of the tree, so a tree deeper than the process's open-file limit (often 1024) stops with `IOException: Too many open files`.
 
 ## Notes
 
@@ -187,25 +187,6 @@ A recursive delete keeps one open folder handle per level of the tree on Linux a
 | `ToCharArray()` | one `char` per Unicode scalar value (`"é😀a"` has 3) | an NZ `char` is a Unicode scalar value |
 | `ToString()` of a `[Flags]` enum value | the number (`3`), and `[Flags]` gets the warning ``unknown attribute `Flags` `` | attributes have no effect yet |
 | `nzc run f.nz -- <args>` | refuses an argument that is not valid UTF-8 (exit code 2; the program does not start) | an NZ `string` is UTF-8 |
-
-## Windows paths not yet proven by CI
-
-The Windows code is written and reviewed but has not run yet: Windows CI is blocked. Until it runs, these are the open points (W1-W12):
-
-| # | What | To prove on Windows |
-|---|---|---|
-| W1 | `File.Copy` onto another name of the source (hard link, 8.3 short name, case alias, `\\?\` prefix) | refused by file identity, source intact (`file_copy_onto_a_hard_link_of_itself_keeps_the_source`, `file_copy_onto_a_case_alias_keeps_the_source`) |
-| W2 | recursive delete is path-based; a junction inside the tree or as `path` is removed, never entered | `directory_delete_recursive_keeps_junction_targets`; a racing junction swap is not covered (see above) |
-| W3 | paths of 260 units or more get the `\\?\` prefix | create, read, delete and `GetFullPath` at a 300-unit path with long paths disabled |
-| W4 | names with an unpaired surrogate become U+FFFD | `GetFiles`, `File.Exists`, `Directory.Delete` on such a name |
-| W5 | `*` or `?` in a path given to `File.Delete`/`Directory.Delete` | nothing removed, with the standard error message |
-| W6 | `BCryptGenRandom` is declared by hand and linked with `#pragma comment(lib, "bcrypt.lib")` (MSVC target; MinGW would need `-lbcrypt`) | dictionary programs link; two runs get different seeds |
-| W7 | listing with `_wfindfirst64`: an empty folder, a drive root (`C:\`), a UNC share | `GetFiles` on each |
-| W8 | drive-relative `C:foo`, UNC roots, `/` and `\` as separators | the `std_path` tests with their Windows expectations |
-| W9 | `File.Copy` does not copy the read-only attribute (the Windows `CopyFileW` does) | copy of a read-only file |
-| W10 | pattern matching ignores ASCII case only | the pattern fixture on Windows |
-| W11 | exact output comparisons with `\r\n` line ends | `example_pe_info_reads_fixture` on Windows |
-| W12 | no `-D_POSIX_C_SOURCE` off Linux | Windows and macOS builds compile `nz.h` without errors |
 
 ## Split, Format, Keys and Values, Stack and Queue
 

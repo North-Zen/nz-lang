@@ -98,9 +98,9 @@ void Main(string[] args) {
 }
 ```
 
-A C signature takes the integer types, `float`, `double`, `bool`, pointers, enums (as their underlying type) and `[StructLayout]` structs by value or by pointer, and `void` as a result; `ref` and `in` are passed as pointers. Not `string`, classes, arrays, optionals, tuples, or `char` (use `byte` or `uint` for a C `char`), and no variable argument list. Two sizes to watch: NZ `bool` is C's one-byte `bool`, and NZ `long` is always 64 bits, while C's `long` is 32 bits on Windows.
+A C signature takes the integer types, `float`, `double`, `bool`, pointers, enums (as their underlying type) and `[StructLayout]` structs by value or by pointer, and `void` as a result; `ref` and `in` are passed as pointers. Not `string`, classes, arrays, optionals, tuples, or `char` (use `byte` or `uint` for a C `char`), and no variable argument list. Two sizes to watch: NZ `bool` is C's one-byte `bool`, and NZ `long` is always 64 bits, while the size of C's `long` is not the same on every target.
 
-Names are checked because they are written into the generated C and the link line. A C name must be a C identifier, not a C keyword and not `main`; names the generated code or the runtime use are refused. A library must be a plain name (letters, digits, `_`, `.`, `+`, `-`); a path is not supported yet. The C name is given to the linker as is, which works on Linux and Windows x64; a target that prefixes C symbols with `_` (macOS, 32-bit Windows) is not supported yet.
+Names are checked because they are written into the generated C and the link line. A C name must be a C identifier, not a C keyword and not `main`; names the generated code or the runtime use are refused. A library must be a plain name (letters, digits, `_`, `.`, `+`, `-`); a path is not supported yet. The C name is given to the linker as is, which works on Linux; a target that prefixes C symbols with `_` is not supported yet.
 
 ### Functions C can call: `[UnmanagedCallersOnly]`
 
@@ -127,7 +127,7 @@ void Main(string[] args) {
 }
 ```
 
-`nzc build file.nz --emit-c-part out.h` writes, instead of an executable, the exports and what they need as a C header: every function `static inline` and marked unused, no `main`, no `#include "nz.h"`. It is included after the runtime header and compiles under `-Wall -Wextra -Werror`. A part is C for clang or GCC (also `clang-cl`), not for MSVC's `cl.exe`: it uses `__attribute__((unused))`, `__asm__` labels and `_Static_assert`. A part works after `nz_core.h` alone or after `nz.h`; an enum's name function, which returns a `string`, is in it only after `nz.h`. Its C names carry the package path (`T_2_4main1P` is the struct `P` of package `main`), so two parts of different packages can be included together, and two parts of the same package name clash: give each part its own package. A part built with `--no-runtime` may supply `nz_panic`: it is then an ordinary external function, and the C file that includes the part defines `NZ_USER_PANIC` before `nz_core.h`.
+`nzc build file.nz --emit-c-part out.h` writes, instead of an executable, the exports and what they need as a C header: every function `static inline` and marked unused, no `main`, no `#include "nz.h"`. It is included after the runtime header and compiles under `-Wall -Wextra -Werror`. A part is C for clang or GCC: it uses `__attribute__((unused))`, `__asm__` labels and `_Static_assert`. A part works after `nz_core.h` alone or after `nz.h`; an enum's name function, which returns a `string`, is in it only after `nz.h`. Its C names carry the package path (`T_2_4main1P` is the struct `P` of package `main`), so two parts of different packages can be included together, and two parts of the same package name clash: give each part its own package. A part built with `--no-runtime` may supply `nz_panic`: it is then an ordinary external function, and the C file that includes the part defines `NZ_USER_PANIC` before `nz_core.h`.
 
 ### Without the runtime: `--no-runtime`
 
