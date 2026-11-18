@@ -62,7 +62,7 @@ The compiler's keyword table, generated from the compiler:
 NZ has 63 keywords: `import` `package` `void` `public` `private` `class` `struct` `enum` `interface` `var` `new` `this` `if` `else` `while` `for` `foreach` `in` `break` `continue` `return` `switch` `case` `default` `is` `ref` `using` `defer` `unsafe` `true` `false` `null` `abstract` `base` `const` `do` `nameof` `operator` `override` `params` `protected` `readonly` `sealed` `sizeof` `static` `type` `union` `virtual` `where` `async` `await` `move` `lock` `yield` `extern` `volatile` `fixed` `stackalloc` `try` `catch` `finally` `throw` `derive`.
 <!-- /GEN -->
 
-Some of them are reserved and not available as features yet (`async`, `await`, `lock`, `yield`, `abstract`, `override`, `virtual`, `sealed`, `protected`, `base`, `move`, `volatile`, `derive`): using them as a name gives "`async` is reserved for a future feature".
+Some of them are reserved and not available as features yet (`async`, `await`, `lock`, `yield`, `move`, `volatile`, `derive`): using them as a name gives "`async` is reserved for a future feature".
 
 `checked` and `unchecked` are keywords: nothing can be named with them.
 

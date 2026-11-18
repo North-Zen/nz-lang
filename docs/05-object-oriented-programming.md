@@ -413,14 +413,73 @@ Outline:
 
 ## 5.9 Inheritance
 
-This section is not written yet.
+A class may derive from one base class, written first after the colon, before any interfaces (`class Dog : Animal, IPet`). The derived class has every field and method of its base except the private ones and the constructors. A member marked `virtual` or `abstract` may be replaced in a derived class with `override`; a call then runs the method of the object's real class, whatever the type of the variable holding it. `abstract` members have no body and live in `abstract` classes, which cannot be created with `new`; a class that is not abstract must override every abstract member it inherits. `sealed` on a class stops further derivation, and `sealed override` stops further overriding. `base.M()` calls the base class's method directly, and `base.X` reads its field. A member declared again without `override` hides the inherited one (write `new` to say so; without it the compiler warns); a hidden member is chosen by the static type. A `protected` member is visible in its class and in derived classes.
 
-Outline:
+A derived class converts to each of its ancestors: `Animal a = new Dog();` moves the object into `a`, an `in Animal` parameter borrows a `Dog`, and a `ref Animal` parameter takes only an `Animal` variable. An object is always dropped as its real class: dropping `a` above frees the `Dog` and everything it owns. Along a chain, each class that implements `IDisposable` runs the `Dispose` that implements it, the most derived first: the one it declares, or the one it inherits when it lists `IDisposable` without declaring its own (a `Dispose` that two levels share runs once). The values those `Dispose` methods release wait in one queue for the whole object. The object's fields are dropped first, the base class's first, and the object is freed; then the queued values are dropped in the order they were released, whichever level released them.
 
-- Base and derived classes
-- `virtual` and `override`
-- `sealed`
-- Interfaces
+Constructors run in this order: the derived class's field initializers, then the arguments of `: base(...)`, then the base class's field initializers and constructor body, then the derived constructor body. A constructor without `: base(...)` calls the base's parameterless constructor. After a primary constructor, the base arguments go in the base list: `class Puppy(string name) : Animal(name)`.
+
+```nz output="I say woof\nsmall I say yip\nrex\nTrue False\n"
+package main;
+
+import std.io.Console;
+import std.collections.List;
+
+abstract class Animal {
+    string Name;
+    Animal(string name) { Name = name; }
+    abstract string Speak();
+    virtual string Describe() { return $"I say {Speak()}"; }
+}
+
+class Dog : Animal {
+    Dog(string name) : base(name) { }
+    override string Speak() { return "woof"; }
+}
+
+class Puppy(string name) : Dog(name) {
+    override string Speak() { return "yip"; }
+    override string Describe() { return "small " + base.Describe(); }
+}
+
+void Main(string[] args) {
+    var zoo = new List<Animal>();
+    zoo.Add(new Dog("rex"));
+    zoo.Add(new Puppy("bit"));
+    foreach (var a in zoo) {
+        Console.WriteLine(a.Describe());
+    }
+    Animal first = new Dog("rex");
+    if (first is Dog d) {
+        Console.WriteLine(d.Name);
+    }
+    Console.WriteLine($"{first is Animal} {first is Puppy}");
+}
+```
+
+A constructor of a class that has derived classes runs before the derived constructor has assigned its fields, so it may not call on `this` a method that could reach an override (directly or through other methods), nor pass `this` on:
+
+```nz error="cannot call `Describe` on `this`"
+package main;
+
+class Animal {
+    string Label = "";
+    Animal() { Label = Describe(); }
+    virtual string Describe() { return "animal"; }
+}
+
+class Dog : Animal {
+    string Breed;
+    Dog() { Breed = "collie"; }
+    override string Describe() { return Breed; }
+}
+
+void Main(string[] args) {
+    var d = new Dog();
+}
+```
+
+`x is T` and `x is T v` test the real class of an object (`T` a class related to the type of `x`, or a class that implements the interface of an interface value); `v` borrows the object. Not supported yet: `as`, casts between classes (`(Dog)a`), `is` with an interface as the target, type patterns over classes in `switch`, virtual properties and indexers, generic virtual methods, `private protected`, and hiding a member that implements an interface for the base class, also when the base takes the member from an interface's default body (list the interface again in the derived class instead). Also not supported yet: an explicit upcast `(Animal)d`, `foreach (Animal a in dogs)` over a list of a derived class, `Dog? ?? Animal`, a tuple converted element by element to a tuple of base classes, static members of a base class reached from a derived class (by bare name or as `Derived.Member`, `protected static` included), a type nested in a base class used by its bare name from a derived class (write `Base.Inner`), `abstract override`, covariant return types, `base.M()` inside a local function, `is not T` and `is T or U` on classes, overriding `ToString`, and a class chain of more than 2000 levels (code generation refuses it: the C compiler runs out of stack on the nested base structs somewhere past 4000). A base class that uses itself with ever larger type arguments (`class A<T> : B<A<A<T>>>`) is stopped by code generation, not by the check, and an `Arc<B>` that could hold an object of a generic derived class with a `Shared<_>` or `WeakReference<_>` inside (`D<Shared<B>>`) is refused by code generation too.
 
 ## 5.10 Abstract
 

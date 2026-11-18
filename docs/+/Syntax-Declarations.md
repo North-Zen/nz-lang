@@ -1124,6 +1124,39 @@ Two different defaults inherited for one member must be resolved by declaring th
 
 ## 9. Inheritance
 
+A class derives from one base class, written first in the base list, before any interfaces. `virtual`, `abstract`, `override`, `sealed`, `new` (as a modifier), `protected` and `base.Member` are described in chapter 5; `: base(...)` calls the base constructor.
+
+```nz output="woof\nsmall woof\n"
+package main;
+
+import std.io.Console;
+
+abstract class Animal {
+    protected string Name;
+    Animal(string name) { Name = name; }
+    abstract string Speak();
+    virtual string Describe() => Speak();
+}
+
+class Dog(string name) : Animal(name) {
+    override string Speak() => "woof";
+}
+
+class Puppy : Dog {
+    Puppy() : base("pup") { }
+    override string Describe() => "small " + base.Describe();
+}
+
+void Main(string[] args) {
+    Animal a = new Dog("rex");
+    Console.WriteLine(a.Describe());
+    Animal b = new Puppy();
+    Console.WriteLine(b.Describe());
+}
+```
+
+Not available yet: `as`, casts between classes, `is` with an interface as the target, virtual properties and indexers, generic virtual methods and `private protected`. See [Ownership](Ownership.md) for how class hierarchies are dropped.
+
 ---
 
 ## 10. Lambdas, delegates and events
@@ -1591,6 +1624,7 @@ What a `Dispose` releases is never dropped inside it: a value with a `Dispose` o
 | Implementing an interface | [8.2](#82-implementing-an-interface) |
 | Default interface members | [8.3](#83-default-interface-members) |
 | Interface inheritance | [8.4](#84-interface-inheritance) |
+| Class inheritance, `virtual`, `override`, `abstract`, `sealed`, `base` | [9](#9-inheritance) |
 | `readonly` interface members | [8.5](#85-readonly-interface-members-nz-only) |
 | Local functions | [10.1](#101-local-functions) |
 | Attribute syntax | [11.1](#111-attribute-syntax) |
@@ -1622,12 +1656,10 @@ These constructs are not available in NZ:
 
 - Top-level statements
 - `internal`
-- `protected`
 - `file`, `protected internal`, `private protected`
 - Record equality, `ToString` and `with`
 - `delegate`
 - `partial`
-- `abstract`, `sealed`, `virtual`, `override`, `new` (modifier)
 - `readonly struct` and `ref struct`
 - Method overloading
 - The `field` keyword
@@ -1649,9 +1681,6 @@ These constructs are not available in NZ:
 - `Shared<I>` and `Arc<I>` of an interface `I`
 - Calling `Dispose()` directly
 - Static and static abstract interface members
-- Base classes
-- `virtual`, `override`, `abstract`, `sealed`, `new`
-- `base` access
 - Casts between classes and `as`
 - `object`
 - Lambdas, `Func` and `Action`
@@ -1687,28 +1716,6 @@ package main;
 import std.io.Console;
 
 Console.WriteLine("top");
-```
-
-**`protected`**
-
-```nz error="`protected` is reserved for a future feature"
-package main;
-
-class C {
-    protected int X;
-}
-
-void Main(string[] args) { }
-```
-
-**`abstract`, `sealed`, `virtual`, `override`, `new` (modifier)**
-
-```nz error="`abstract` is reserved for a future feature"
-package main;
-
-abstract class Shape { }
-
-void Main(string[] args) { }
 ```
 
 **Method overloading**

@@ -783,6 +783,36 @@ void Show(in ICounter c) {
 void Main(string[] args) { }
 ```
 
+## Class hierarchies
+
+A derived object converted to one of its base classes is the same object: `Animal a = dog;` moves it, an `in Animal` argument borrows it, and a `ref Animal` parameter takes only an `Animal` variable (the callee could store another kind of animal in it). A `List<Dog>` does not convert to a `List<Animal>`. Whatever the type of the variable, list or field holding it, an object is dropped as its real class: everything a `Dog` owns is freed when an `Animal` variable holding it ends. The drop of an object runs the `Dispose` that each class of its chain declares, the most derived first, then frees the object and drops its fields, the base class's fields first, each class's in declaration order.
+
+A call of a `virtual`, `abstract` or `override` member may run any override, so the receiver rule reads the member's marker, as for interfaces: a `readonly virtual` (or `readonly abstract`) member borrows the receiver for reading, any other one borrows it for writing. An override of a `readonly` member is `readonly` too and must not change the object. A `sealed` member, a member of a class with no derived class, and `base.M()` run one known body, so their own inference decides. An inherited method keeps the inference of its body in the class that declares it.
+
+A base class's constructor runs before the derived constructor assigns its fields. A constructor of a class with derived classes may therefore not call, on `this`, a member that could reach an override (directly, or through other methods it calls), and may not use `this` as a value. Calls of members that reach no override, and reads and writes of its own fields, are fine.
+
+```nz error="`Bump` on `a`, which it changes"
+package main;
+
+class Counter {
+    int N;
+    readonly virtual int Peek() { return N; }
+    virtual void Bump() { }
+}
+
+class Loud : Counter {
+    override int Peek() { return N; }
+    override void Bump() { N++; }
+}
+
+void Show(in Counter a) {
+    int n = a.Peek();
+    a.Bump();
+}
+
+void Main(string[] args) { }
+```
+
 ## `IDisposable`: cleanup follows ownership
 
 `Dispose` of a type implementing `IDisposable` runs exactly once, at the drop of the value, wherever ownership puts it: the end of the owner's scope by any exit (`return`, `break`, `continue`, `?`, the end of a `switch` section, a `using` block), a replacement (`x = other;` disposes the old value at once), the drop of an object, list, dictionary or handle that holds it, or the end of the callee that took it by value. Moving a value moves its cleanup; a conditionally moved variable is disposed only on the paths where it still holds the value. `defer`s and drops (with their `Dispose`) run in one reverse registration order. `Abort` stops the program without running `Dispose`. A struct that implements `IDisposable` is an owned type: it moves instead of being copied. `x.Dispose()` written in a program is refused, since the automatic call at the drop would run it again (also through a constraint `where T : IDisposable`, through `Shared<T>` and `Arc<T>`, and inside the type); the `Dispose` that implements `IDisposable` cannot also implement another interface's `Dispose`.
