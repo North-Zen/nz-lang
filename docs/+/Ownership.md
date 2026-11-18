@@ -282,7 +282,7 @@ void Main(string[] args) {
 }
 ```
 
-Inside the function, a span parameter follows the rules of the array it views: an element of owned type cannot be moved out (assigning an element drops the old one), a `foreach` over the span freezes it, and an `in Span<T>` is read-only. A span is never stored, so it cannot outlive the call. A span over storage inside a `Shared<T>` or `Arc<T>` object is not supported yet: the run-time lend checks of shared objects work per call argument, not per span.
+Inside the function, a span parameter follows the rules of the array it views: an element of owned type cannot be moved out (assigning an element drops the old one), a `foreach` over the span freezes it, and an `in Span<T>` is read-only. A span is never stored, and a lambda that is kept (stored, returned, or passed to a function that keeps it) cannot capture one, so it cannot outlive the call; to keep the values, copy the elements into an array or a list and capture that. A span over storage inside a `Shared<T>` or `Arc<T>` object is not supported yet: the run-time lend checks of shared objects work per call argument, not per span.
 
 `params` arguments move into the array made for them, as into a by-value parameter: a variable passed as one of them cannot be used afterwards. For a `params Span<T>` that array is a temporary, freed with its elements at the end of the statement; a `params T[]` array is the callee's.
 
@@ -520,6 +520,226 @@ void Main(string[] args) {
 ```
 
 Returning a captured owned value (a class object, a list, an array, or a variable of a generic type `T`) is a move out of the captured variable and is refused; give the value to the function as a parameter instead.
+
+## Lambdas borrow or copy what they capture
+
+A lambda reads the variables around it. What it does with them depends on where the lambda goes:
+
+- If it is only used while those variables live, the lambda works on the variables themselves. It sees the current value, and it may change them. This is the case for a lambda passed to a function that does not keep it, a lambda that is only called, and a local variable that holds such a lambda.
+- If it is kept (stored in a field, an element, a collection or a tuple, returned, captured by another kept lambda, or passed to a function that keeps its parameter), it holds copies made when the lambda is created, and it changes none of them. NZ refuses the program when those copies could differ from the variables, so in a program that compiles a kept lambda never shows a value that differs from the variable it was copied from.
+
+The compiler finds out whether a function keeps a parameter by reading its body: storing it, returning it, capturing it in a kept lambda, or passing it on to a parameter that keeps it. A function it cannot read (an interface member, a call through a function value, a constructor) counts as keeping. A lambda that captures nothing, or a `static` lambda, has no environment and can go anywhere.
+
+### A lambda used during a call works on the variables
+
+```nz
+package main;
+
+import std.collections.List;
+import std.io.Console;
+
+int Twice(Func<int> next) {
+    return next() + next();
+}
+
+void Main(string[] args) {
+    int calls = 0;
+    int r = Twice(() => { calls += 1; return calls; });
+    List<int> seen = [];
+    Action note = () => seen.Add(calls);
+    note();
+    note();
+    Console.WriteLine($"{r} {seen.Count}");
+}
+```
+
+Every variable the lambda captures is lent to the call that receives it, shared when the lambda only reads it and exclusively when it changes it, next to the call's other loans. So a lambda cannot reach what the same call changes or moves:
+
+```nz error="overlapping borrow in the call of `Run`"
+package main;
+
+class Total {
+    public int Sum = 0;
+
+    public void Run(Func<int> f) {
+        Sum = Sum + f();
+    }
+}
+
+void Main(string[] args) {
+    Total t = new Total();
+    t.Run(() => t.Sum);
+}
+```
+
+A local variable that holds a lambda remembers what the lambda captures. Each call that receives the variable lends the same variables, and each use of it finds out whether a captured variable has moved away:
+
+```nz error="use of moved value"
+package main;
+
+import std.collections.List;
+
+void Consume(List<int> items) { }
+
+void Main(string[] args) {
+    List<int> items = [1];
+    Func<int> count = () => items.Count;
+    Consume(items);
+    int n = count();
+}
+```
+
+A variable that holds a lambda cannot outlive a variable the lambda captures; that would leave the lambda reading a variable that is gone:
+
+```nz error="would outlive `k`"
+package main;
+
+void Main(string[] args) {
+    Func<int> f = () => 0;
+    {
+        int k = 1;
+        f = () => k;
+    }
+    int r = f();
+}
+```
+
+A lambda in a method may read `this`, but it cannot change the object (`this` is borrowed read-only inside it). Changing the object from a lambda is not supported in 0.1; do it in the method itself.
+
+When a lambda changes a variable (or an object the variable holds), a call that runs the lambda changes it, so the call is checked like the same change written in place: an alias of an element of a list the lambda clears ends, the list a `foreach` iterates over cannot be changed by a lambda called inside the loop, and what the lambda assigns may be null again after the call.
+
+A lambda may change only what the code around it may change: a variable that code owns, a `ref` parameter, or a variable an enclosing lambda may change. What the code around it only reads stays read-only inside the lambda too: an `in` parameter, a variable a local function captures, a parameter of an enclosing lambda, an alias of a collection element, a loop variable and a pattern variable. So a lambda inside a local function cannot change what the local function captures; pass the variable to the local function as a `ref` parameter instead:
+
+```nz error="a lambda cannot change what the code around it may only read"
+package main;
+import std.collections.List;
+
+void Clear(in List<int> l) {
+    Action w = () => l.Clear();
+    w();
+}
+
+void Main(string[] args) {
+    List<int> l = [1, 2];
+    Clear(l);
+}
+```
+
+A function value stored in a union is kept, like one stored in a field: it copies what it captures.
+
+### A kept lambda copies what it captures
+
+```nz output="0\n1\n2\n"
+package main;
+
+import std.collections.List;
+import std.io.Console;
+
+List<Func<int>> MakeAll() {
+    List<Func<int>> all = [];
+    for (int i = 0; i < 3; i++) {
+        int copy = i;
+        all.Add(() => copy);
+    }
+    return all;
+}
+
+void Main(string[] args) {
+    foreach (var f in MakeAll()) {
+        Console.WriteLine($"{f()}");
+    }
+}
+```
+
+A number, a `bool`, a `char` and a struct that owns nothing are copied. A string and a `Shared<T>` handle are retained (counted). An object, a list or an array is moved into the lambda, and the variable cannot be used afterwards, as with any move.
+
+A kept lambda's captures live in an environment that is counted like a string: copying the function value (`Func<int> g = f;`) shares it, and the environment, with the object it owns, is freed when the last copy goes. The environment is a live object, so `Diag.LiveObjects()` counts it:
+
+```nz output="42 42 2\n2\n0\n"
+package main;
+
+import std.diag.Diag;
+import std.io.Console;
+
+class Box {
+    int N;
+}
+
+Func<int> Keep(int n) {
+    Box b = new Box();
+    b.N = n;
+    return () => b.N * 2;
+}
+
+void Main(string[] args) {
+    long before = Diag.LiveObjects();
+    Func<int> f = Keep(21);
+    Func<int> g = f;
+    Console.WriteLine($"{f()} {g()} {Diag.LiveObjects() - before}");
+    f = () => 0;
+    Console.WriteLine($"{Diag.LiveObjects() - before}");
+    g = () => 0;
+    Console.WriteLine($"{Diag.LiveObjects() - before}");
+}
+```
+
+A kept lambda that captures a `Shared<T>` whose object holds that lambda is a reference cycle and is never freed, as two `Shared<T>` objects that hold each other are; hold the other side with `WeakReference<T>`.
+
+A kept lambda would have to show the later changes of the variable it captured; a copy does not. So changing a captured variable after the lambda was made, on any path, is an error that says how to write it. This is also what rejects the well-known loop surprise, where every lambda of a loop shares one counter:
+
+```nz error="cannot change `i`"
+package main;
+
+import std.collections.List;
+
+void Main(string[] args) {
+    List<Func<int>> all = [];
+    for (int i = 0; i < 3; i++) {
+        all.Add(() => i);
+    }
+}
+```
+
+Copy the variable into a local declared inside the loop body, as above, or keep the state both sides must see in a `Shared<T>`. A `foreach` variable is a new variable for each iteration and needs no copy. A write on a path that never follows the lambda is fine: in `if (b) { all.Add(() => k); } else { k = 2; }` the write does not follow the lambda.
+
+A kept lambda cannot change what it captures either (it would change its own copy):
+
+```nz error="captured by a kept lambda"
+package main;
+
+import std.collections.List;
+
+void Main(string[] args) {
+    int total = 0;
+    List<Func<int>> all = [];
+    all.Add(() => { total = total + 1; return total; });
+}
+```
+
+These cannot be captured by a kept lambda: a `ref` or `in` parameter, an alias of a collection element, a loop or pattern variable that borrows an owned value, and `this`. A kept lambda inside a lambda or local function that only borrows a variable may copy a number, a string or a `Shared<T>` handle, as long as nothing changes that variable anywhere (`a => () => a + k` with a `k` that is never assigned again); if something does change it, or the variable is an object, copy it into a local of the outer lambda first.
+
+```nz error="a kept lambda cannot capture `n`"
+package main;
+
+import std.collections.List;
+
+void Remember(ref int n, List<Func<int>> all) {
+    all.Add(() => n);
+}
+
+void Main(string[] args) { }
+```
+
+### Not supported yet
+
+- A static field of function type (`static Func<int, int> G = ...;` is not a constant expression, and `K.G(1)` cannot call a static field), and a function value in an `Arc<T>` (also inside a list, a class or a type argument of one: a function value's count is not atomic).
+- A function value in a program built with `--no-runtime`, or in a C part.
+- A local function that captures variables, used as a value that is kept (`all.Add(add)`): write a lambda that captures copies. Passed to a function that does not keep it, it works like a borrowed lambda.
+- A kept lambda that calls a local function which reads a variable from outside the lambda.
+- A lambda that stores itself in a variable it captures (`fact = n => n <= 1 ? 1 : n * fact(n - 1);`): the variable would change under it. Write the recursion as a local function.
+- A function value in an interpolation hole, in `+` with a string, or in `string.Format`: it has no text form; call it. `f == g` and `f != g` between two function values are refused for now (comparing with `null` works): a closure copies what it captures when it is kept, so two closures made from one lambda over the same variable cannot be told apart by what they hold.
+- A generic function named as a value with explicit type arguments (`Id<int>`): write the name alone and let the target type give them (`Func<int, int> a = Id;`). A generic function that makes text of a value of its type parameter, called with a function type as that parameter, is refused at the call (a generic type with a function type argument is not followed: the build refuses it).
+- An explicit return type before a lambda's parameters (`Token? (x) => ...`) is read as a lambda unless a `:` that belongs to a `?` follows its body (then it was a conditional, `Ready ? () => 1 : () => 2`).
 
 ## Freed at scope exit
 

@@ -924,8 +924,8 @@ A runtime error inside the `try` block is still a stop: the program ends at once
 | `unchecked(...)` | wraps around |
 | Exit code of `Main` | `int Main` returns the process exit code; `void Main` gives 0 |
 | Constant that overflows, constant divided by zero | a compile-time error |
-| `try`, `catch`, `finally`, `throw` | `try`/`finally` works (section 6). `catch` and `throw` are not available, and a program error ends the program (section 8) |
-| `Exception` and its classes | not available: `Exception` is an unknown type (section 8) |
+| `try`, `catch`, `finally`, `throw` | `try`/`finally` works (section 6). `throw` and `catch` pass the checker but `nzc build` and `nzc run` refuse them for now, and a program error ends the program (section 8) |
+| `Exception` and its classes | `Exception` and the classes derived from it exist (section 8); nothing can throw or catch them yet |
 | An uncaught error | prints one line, `nz: <message>` or `nz: <ExceptionName>: <message>`, and exits with 1 |
 | Cleanup when an error ends the program | no cleanup: no drop, no `defer` (section 6) |
 | Integer overflow | stops unless `unchecked` |
@@ -942,17 +942,17 @@ A runtime error inside the `try` block is still a stop: the program ends at once
 | Checking a promise | `Assert` is built in and always on; `Abort` stops the program with a message |
 | `Main` with another return type | `Main` is `void` or `int`; a `Result` cannot be returned |
 
-```nz fragment error="not supported yet: `throw`"
+```nz fragment
 throw new Exception("x");
 ```
 
-```nz fragment error="unknown type `Exception`"
+```nz fragment error="cannot assign `null` to `Exception`"
 Exception e = null;
 ```
 
-## 8. Exceptions (not available)
+## 8. Exceptions (in progress)
 
-None of this works today, and no test checks it. The syntax is `throw`, `try`, `catch` and `finally` (`try`/`finally` without `catch` works, section 6).
+The syntax is `throw`, `try`, `catch` and `finally`. The checker accepts and checks `throw`, `catch` and `catch ... when` (the class `Exception` and the classes derived from it, such as `ArgumentException` and `IOException`, exist and can be made with `new`), but the compiler does not generate code for `throw` and `catch` yet: `nzc build` and `nzc run` stop with `not supported yet`. `try`/`finally` without `catch` works (section 6). What follows describes where this is going.
 
 - **Program errors** (an overflow, a division by zero, an index out of range, a failed `Assert`) would throw an exception that a `try`/`catch` can catch. An uncaught exception would still end the program.
 - **Standard library members** would throw the exceptions named in section 2: `File.ReadAllText` would throw `FileNotFoundException`, a bad `int.Parse` would throw `FormatException`, and so on, instead of stopping the program.

@@ -1809,8 +1809,12 @@ var t = typeof(int);
 
 **Lambdas**
 
-```nz fragment error="expected Semi, found Arrow"
-Func<int, int> f = x => x * 2;
+Lambdas are written `x => e`, `(int x, int y) => { ... }`, `int (int x) => e` (an explicit result type, `void` included), `static x => e`, and may be cast to a function type, `(Func<int, int>)(x => x + 1)`. A lambda that is kept (stored, returned, or passed to a function that keeps it) holds copies of what it captures and cannot change them; see [Lambdas borrow or copy what they capture](Ownership.md#lambdas-borrow-or-copy-what-they-capture):
+
+```nz fragment error="captured by a kept lambda"
+int total = 0;
+List<Action<int>> handlers = [];
+handlers.Add(x => total += x);
 ```
 
 **`await`**
@@ -1820,23 +1824,10 @@ int x = 5;
 await x;
 ```
 
-**`throw` expressions**
-
-```nz fragment error="not supported yet: `throw`"
-int x = 1;
-int y = x > 0 ? x : throw new Exception("bad");
-```
-
 **`lock`**
 
 ```nz fragment error="`lock` is reserved for a future feature"
 lock (args) { }
-```
-
-**`throw`**
-
-```nz fragment error="not supported yet: `throw`"
-throw new Exception("x");
 ```
 
 **`yield`**

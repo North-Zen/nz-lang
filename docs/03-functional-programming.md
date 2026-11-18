@@ -247,12 +247,29 @@ void Main(string[] args) {
 
 ## 3.10 Higher-order functions
 
-This section is not written yet.
+A function can take a function value (`Func<...>`, `Action<...>`, `Predicate<T>`, `Comparison<T>` or `Converter<TInput, TOutput>`) and a lambda or a function name can be passed for it. The collections take them too: `List<T>` has `Sort(Comparison<T>)`, `ForEach`, `Find`, `FindLast`, `FindIndex`, `FindLastIndex`, `FindAll`, `Exists`, `TrueForAll`, `RemoveAll` and `ConvertAll`, `HashSet<T>` has `RemoveWhere`, and `Array` has the same searching, ordering and converting members as static methods (`Array.Sort(a, cmp)`, `Array.Find(a, p)`).
 
-Outline:
+```nz output="25 4 3,1,2 2 c-b-a-\n"
+package main;
 
-- Functions that take functions
-- Functions that return functions
+import std.io.Console;
+import std.collections.List;
+import std.collections.Array;
+
+void Main(string[] args) {
+    List<int> xs = [3, 1, 2, 4];
+    int total = 0;
+    xs.ForEach(x => total += x * x);
+    int evens = xs.RemoveAll(x => x % 2 == 0);
+    xs.Sort((a, b) => b - a);
+    List<string> names = ["a", "b", "c"];
+    string[] words = Array.ConvertAll(names.ToArray(), s => s + "-");
+    Array.Sort(words, (a, b) => string.CompareOrdinal(b, a));
+    Console.WriteLine($"{total - 5} {evens + 2} {xs[0]},{xs[1]},{xs.Count} {xs.FindIndex(x => x == 1) + 1} {words[0]}{words[1]}{words[2]}");
+}
+```
+
+A library member calls the function during the call and keeps nothing, so the lambda may change the variables around it (`total` above). The list the member works on is lent for the call: a lambda cannot change the same list (`xs.ForEach(x => xs.Add(x))` is an error); reading it is fine, and for a list inside a `Shared<T>` a change made through another handle during the call stops the program, while the program runs (a read is allowed). A function is lent each element: an owned element (a class object) can be read, not kept or moved. `Find`, `FindLast` and `FindAll` give copies of elements, so they are available for elements that are copied (numbers, `bool`, `char`, enums, structs of them, `string?`); for a `List<string>` or owned elements use `FindIndex` and the indexer, or `Exists`. The order of elements that compare equal after a `Sort` with a comparison is not specified.
 
 ## 3.11 Method references
 
@@ -472,13 +489,21 @@ while (true) {
 }
 ```
 
-- **Not a value yet.** A local function can only be called; `var g = f;` is an error until function values arrive with lambdas:
+- **A value.** A local function can be used where a function value is expected: `Func<int> g = f;`, or `var g = f;` (the natural type of a function named alone). A local function that captures variables works on them while it is only passed to a call that does not keep it.
 
-```nz fragment error="must be called"
-int f() { return 1; }
-var g = f;
+```nz output="1 1\n"
+package main;
+
+import std.io.Console;
+
+void Main(string[] args) {
+    int f() { return 1; }
+    Func<int> g = f;
+    var h = f;
+    Console.WriteLine($"{g()} {h()}");
+}
 ```
 
-- **Not supported yet.** A generic local function (`int f<T>(T x) { ... }`) and a local function used as a value. The first reports "not supported yet"; using a local function as a value reports ``function `f` must be called``. The type parameters of the enclosing function or class can be used inside a local function.
+- **Not supported yet.** A generic local function (`int f<T>(T x) { ... }`) is reported as "not supported yet". A local function that captures variables and is kept as a value (stored or returned) is refused too; see [Lambdas borrow or copy what they capture](+/Ownership.md#lambdas-borrow-or-copy-what-they-capture). The type parameters of the enclosing function or class can be used inside a local function.
 
 Previous: [2. Programming paradigms](02-programming-paradigms.md#2-programming-paradigms) · [Contents](README.md) · Next: [4. Struct](04-struct.md#4-struct)

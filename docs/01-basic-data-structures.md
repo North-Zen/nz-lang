@@ -507,7 +507,7 @@ void Main(string[] args) {
 }
 ```
 
-A span lives only as long as the call it is passed to: it cannot be stored in a local variable, a field, a static, an array or a list, returned, or used as a type argument. In NZ `in` is read-only, as for every `in` parameter. `ReadOnlySpan<T>` is not supported yet. How a span borrows its source is in [Ownership](+/Ownership.md#spans-borrow-for-one-call).
+A span lives only as long as the call it is passed to: it cannot be stored in a local variable, a field, a static, an array or a list, returned, used as a type argument, or captured by a lambda that is kept (stored, returned, or passed to a function that keeps it); a lambda called while the span lives may use it. In NZ `in` is read-only, as for every `in` parameter. `ReadOnlySpan<T>` is not supported yet. How a span borrows its source is in [Ownership](+/Ownership.md#spans-borrow-for-one-call).
 
 ## 1.4.12 Union
 

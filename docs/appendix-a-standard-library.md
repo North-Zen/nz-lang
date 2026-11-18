@@ -113,7 +113,17 @@ import std.collections.List;
 | `Insert` | `void Insert(int, T)` | Inserts the element at `index` (`0` to `Count`); the list owns it from then on. |
 | `Contains` | `bool Contains(T)` | Whether an element equals `item` (elements of a hash key type only). |
 | `Remove` | `bool Remove(T)` | Removes and drops the first element equal to `item`; `false` when there is none (elements of a hash key type only). |
-| `Sort` | `void Sort()` | Orders the elements ascending (an integer type, `char`, `float`, `double` or `string`; strings ordinal, `NaN` first). |
+| `Sort` | `void Sort()`<br>`void Sort(Comparison<T>)` | Orders the elements ascending (an integer type, `char`, `float`, `double` or `string`; strings ordinal, `NaN` first), or by `comparison`, which is lent two elements and gives a negative number, zero or a positive one. The order of elements that compare equal is not specified. |
+| `Find` | `T Find(Predicate<T>)` | A copy of the first element `match` accepts, or the zero value when none is (elements that are copied and have a zero value). |
+| `FindLast` | `T FindLast(Predicate<T>)` | A copy of the last element `match` accepts, or the zero value when none is (elements that are copied and have a zero value). |
+| `FindIndex` | `int FindIndex(Predicate<T>)` | The index of the first element `match` accepts, or -1. |
+| `FindLastIndex` | `int FindLastIndex(Predicate<T>)` | The index of the last element `match` accepts, or -1. |
+| `FindAll` | `List<T> FindAll(Predicate<T>)` | A new list of copies of the elements `match` accepts, in order (elements that are copied only). |
+| `Exists` | `bool Exists(Predicate<T>)` | Whether `match` accepts an element. |
+| `TrueForAll` | `bool TrueForAll(Predicate<T>)` | Whether `match` accepts every element (`true` for an empty list). |
+| `ForEach` | `void ForEach(Action<T>)` | Calls `action` with each element in order; the action is lent the element and cannot change the list. |
+| `RemoveAll` | `int RemoveAll(Predicate<T>)` | Removes and drops the elements `match` accepts, and gives how many there were. |
+| `ConvertAll` | `List<TOutput> ConvertAll(Converter<T, TOutput>)` | A new list of what `converter` gives for each element, in order. |
 | `IndexOf` | `int IndexOf(T)` | The index of the first element equal to `item`, or -1 (elements of a hash key type only). |
 | `ToArray` | `T[] ToArray()` | A new array with copies of the elements (elements that are copied only). |
 | indexer | `this[int] -> T` | Reads or writes the element (of a dictionary: the value of the key). |
@@ -165,6 +175,7 @@ import std.collections.HashSet;
 | `Add` | `bool Add(T)` | Adds the element; `false` when it is already present. |
 | `Remove` | `bool Remove(T)` | Removes the element; `false` when it is not present. |
 | `Contains` | `bool Contains(T)` | Whether the element is present. |
+| `RemoveWhere` | `int RemoveWhere(Predicate<T>)` | Removes and drops the elements `match` accepts, and gives how many there were. |
 | `Clear` | `void Clear()` | Removes every element. |
 | `Count` | `int Count { get; }` | The number of elements. |
 
@@ -205,6 +216,27 @@ import std.collections.Queue;
 | `TryPeek` | `T? TryPeek()` | A copy of the first element, or null when the queue is empty (elements that are copied only). |
 | `Clear` | `void Clear()` | Removes and drops every element. |
 | `Count` | `int Count { get; }` | The number of elements. |
+
+#### `Array`
+
+Static members for arrays: ordering, searching and converting with function values.
+
+```nz-api
+import std.collections.Array;
+```
+
+| Member | Signature | Description |
+|---|---|---|
+| `Sort` (static) | `void Sort(Span<T>)`<br>`void Sort(Span<T>, Comparison<T>)` | Orders the elements ascending (an integer type, `char`, `float`, `double` or `string`), or by `comparison`, which is lent two elements and gives a negative number, zero or a positive one. The order of elements that compare equal is not specified. |
+| `Find` (static) | `T Find(T[], Predicate<T>)` | A copy of the first element `match` accepts, or the zero value when none is (elements that are copied and have a zero value). |
+| `FindLast` (static) | `T FindLast(T[], Predicate<T>)` | A copy of the last element `match` accepts, or the zero value when none is (elements that are copied and have a zero value). |
+| `FindIndex` (static) | `int FindIndex(T[], Predicate<T>)` | The index of the first element `match` accepts, or -1. |
+| `FindLastIndex` (static) | `int FindLastIndex(T[], Predicate<T>)` | The index of the last element `match` accepts, or -1. |
+| `FindAll` (static) | `T[] FindAll(T[], Predicate<T>)` | A new array of copies of the elements `match` accepts, in order (elements that are copied only). |
+| `Exists` (static) | `bool Exists(T[], Predicate<T>)` | Whether `match` accepts an element. |
+| `TrueForAll` (static) | `bool TrueForAll(T[], Predicate<T>)` | Whether `match` accepts every element (`true` for an empty array). |
+| `ForEach` (static) | `void ForEach(T[], Action<T>)` | Calls `action` with each element in order; the action is lent the element and cannot change the array. |
+| `ConvertAll` (static) | `TOutput[] ConvertAll(T[], Converter<T, TOutput>)` | A new array of what `converter` gives for each element, in order. |
 
 ### Package `std.diag`
 
